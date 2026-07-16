@@ -1,0 +1,1738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#05060b" />
+  <title>链上生命 · On-Chain Life</title>
+
+  <style>
+    :root {
+      --bg: #05060b;
+      --panel: rgba(12, 15, 25, .68);
+      --line: rgba(255, 255, 255, .13);
+      --text: rgba(255, 255, 255, .92);
+      --soft: rgba(255, 255, 255, .56);
+      --muted: rgba(255, 255, 255, .32);
+      --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      background: var(--bg);
+      font-family: var(--font);
+    }
+
+    body {
+      user-select: none;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(
+          ellipse at 50% 48%,
+          rgba(75, 92, 180, .16),
+          rgba(19, 24, 53, .08) 32%,
+          transparent 70%
+        ),
+        #05060b;
+    }
+
+    #app::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: .3;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 52px 52px;
+      mask-image: radial-gradient(ellipse at center, #000, transparent 72%);
+      -webkit-mask-image: radial-gradient(ellipse at center, #000, transparent 72%);
+    }
+
+    #canvas-wrap {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .ui {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .glass {
+      border: 1px solid var(--line);
+      background: linear-gradient(
+        135deg,
+        rgba(255,255,255,.075),
+        rgba(255,255,255,.025)
+      );
+      box-shadow:
+        0 24px 80px rgba(0,0,0,.3),
+        inset 0 1px rgba(255,255,255,.08);
+      backdrop-filter: blur(26px) saturate(135%);
+      -webkit-backdrop-filter: blur(26px) saturate(135%);
+    }
+
+    .panel {
+      position: absolute;
+      top: 26px;
+      left: 50%;
+      width: min(650px, calc(100vw - 30px));
+      padding: 20px;
+      border-radius: 25px;
+      transform: translateX(-50%);
+      pointer-events: auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .33em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 9px 0 0;
+      font-size: 27px;
+      font-weight: 300;
+      letter-spacing: -.08em;
+      line-height: 1;
+    }
+
+    .address-preview {
+      max-width: 190px;
+      overflow: hidden;
+      color: var(--soft);
+      font-family: monospace;
+      font-size: 10px;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .address-label {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 8px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    input {
+      min-width: 0;
+      flex: 1;
+      height: 49px;
+      padding: 0 15px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 15px;
+      outline: none;
+      color: rgba(255,255,255,.86);
+      background: rgba(0,0,0,.2);
+      font-family: monospace;
+      font-size: 11px;
+      transition: .25s ease;
+    }
+
+    input::placeholder {
+      color: rgba(255,255,255,.25);
+    }
+
+    input:focus {
+      border-color: rgba(145,165,255,.7);
+      background: rgba(35,42,75,.35);
+      box-shadow: 0 0 0 4px rgba(130,150,255,.08);
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+
+    .generate {
+      height: 49px;
+      padding: 0 20px;
+      border-radius: 15px;
+      color: #080910;
+      background: #f4f6ff;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: .2s ease;
+    }
+
+    .generate:hover {
+      background: #fff;
+      box-shadow: 0 0 28px rgba(175,190,255,.22);
+    }
+
+    .generate:active {
+      transform: scale(.97);
+    }
+
+    .footer-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .status-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #9daeff;
+      box-shadow: 0 0 14px #9daeff;
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: .4; }
+      50% { opacity: 1; }
+    }
+
+    .actions {
+      display: flex;
+      gap: 15px;
+    }
+
+    .small-button {
+      padding: 0;
+      color: rgba(255,255,255,.46);
+      background: transparent;
+      font-size: 10px;
+    }
+
+    .small-button:hover {
+      color: white;
+    }
+
+    .stats {
+      position: absolute;
+      left: 26px;
+      bottom: 26px;
+      width: 250px;
+      padding: 17px;
+      border-radius: 20px;
+      pointer-events: auto;
+    }
+
+    .stats-title {
+      margin-bottom: 15px;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat-label {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      color: rgba(255,255,255,.86);
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .hint {
+      position: absolute;
+      right: 26px;
+      bottom: 28px;
+      color: rgba(255,255,255,.28);
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .loading {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 25px;
+      color: rgba(255,255,255,.6);
+      background: #05060b;
+      font-size: 10px;
+      letter-spacing: .28em;
+      text-align: center;
+      transition: opacity .6s ease;
+    }
+
+    .loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .error-box {
+      max-width: 560px;
+      padding: 24px;
+      border: 1px solid rgba(255,100,120,.35);
+      border-radius: 18px;
+      color: rgba(255,255,255,.7);
+      background: rgba(75,15,28,.28);
+      font-family: monospace;
+      font-size: 11px;
+      letter-spacing: .02em;
+      line-height: 1.8;
+      text-align: left;
+    }
+
+    .error-title {
+      margin-bottom: 10px;
+      color: #ff9da9;
+      font-family: var(--font);
+      font-size: 13px;
+      letter-spacing: .1em;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      z-index: 80;
+      padding: 10px 15px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: rgba(255,255,255,.75);
+      background: rgba(20,24,38,.8);
+      font-size: 10px;
+      opacity: 0;
+      transform: translate(-50%, 12px);
+      transition: .25s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 650px) {
+      .panel {
+        top: 14px;
+        width: calc(100vw - 24px);
+        padding: 16px;
+        border-radius: 21px;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+
+      .address-preview {
+        max-width: 120px;
+      }
+
+      .input-row {
+        flex-direction: column;
+      }
+
+      input,
+      .generate {
+        width: 100%;
+      }
+
+      .stats {
+        left: 14px;
+        bottom: 14px;
+        width: 215px;
+        padding: 14px;
+      }
+
+      .hint {
+        right: 14px;
+        bottom: 18px;
+        font-size: 8px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .hint {
+        display: none;
+      }
+
+      .stats {
+        width: 190px;
+      }
+
+      .stat-value {
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="app">
+    <div id="canvas-wrap"></div>
+
+    <div id="loading" class="loading">
+      INITIALIZING DIGITAL ORGANISM
+    </div>
+
+    <div class="ui">
+      <section class="glass panel">
+        <div class="header">
+          <div>
+            <div class="eyebrow">ON-CHAIN LIFE / ETHEREUM</div>
+            <h1>链上生命</h1>
+          </div>
+
+          <div class="address-preview">
+            <div class="address-label">ADDRESS SIGNATURE</div>
+            <span id="addressPreview">0x742d...8f44e</span>
+          </div>
+        </div>
+
+        <div class="input-row">
+          <input
+            id="addressInput"
+            autocomplete="off"
+            spellcheck="false"
+            value="0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+            placeholder="输入 Ethereum 地址"
+          />
+
+          <button id="generateButton" class="generate">
+            生成生命体
+          </button>
+        </div>
+
+        <div class="footer-line">
+          <div class="status">
+            <span class="status-dot"></span>
+            <span id="statusText">LIFEFORM ACTIVE</span>
+          </div>
+
+          <div class="actions">
+            <button id="randomButton" class="small-button">
+              随机地址
+            </button>
+
+            <button id="copyButton" class="small-button">
+              复制地址
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass stats">
+        <div class="stats-title">LIFE SIGNATURE</div>
+
+        <div class="stats-grid">
+          <div>
+            <div class="stat-label">Vitality</div>
+            <div id="vitality" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Pulse</div>
+            <div id="pulse" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Particles</div>
+            <div id="particleCount" class="stat-value">--</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="hint">
+
+      <section class="glass analysis" id="analysisPanel" style="position:absolute;right:26px;bottom:26px;width:220px;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
+        <div style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:12px;">Wallet Profile</div>
+        <div id="walletRole" style="color:rgba(255,255,255,.8);font-size:13px;margin-bottom:6px;">—</div>
+        <div id="walletTags" style="color:rgba(255,255,255,.4);font-size:10px;line-height:1.6;">—</div>
+        <div id="ageLabel" style="color:rgba(255,255,255,.3);font-size:9px;margin-top:4px;">—</div>
+      </section>
+
+        DRAG TO ROTATE · SCROLL TO ZOOM
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+    import * as THREE from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+    import { EffectComposer } from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js";
+
+    import { RenderPass } from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js";
+
+    import { ShaderPass } from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/ShaderPass.js";
+
+    import { UnrealBloomPass } from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js";
+
+    const DEFAULT_ADDRESS =
+      "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+
+    const app = {
+      scene: null,
+      camera: null,
+      renderer: null,
+      composer: null,
+      organism: null,
+      shell: null,
+      core: null,
+      particles: null,
+      trails: null,
+      config: null,
+      clock: new THREE.Clock(),
+      targetX: 0,
+      targetY: 0,
+      currentX: 0,
+      currentY: 0,
+      targetZoom: 5.4,
+      currentZoom: 5.4,
+      dragging: false,
+      lastX: 0,
+      lastY: 0
+    };
+
+    function hashString(value) {
+      let h1 = 0x811c9dc5;
+      let h2 = 0x01000193;
+
+      for (let i = 0; i < value.length; i++) {
+        const c = value.charCodeAt(i);
+
+        h1 ^= c;
+        h1 = Math.imul(h1, 16777619);
+
+        h2 ^= c + i * 19;
+        h2 = Math.imul(h2, 2246822519);
+      }
+
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+      h2 = Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+
+      return (h1 ^ h2) >>> 0;
+    }
+
+    function createRandom(seed) {
+      let value = seed >>> 0;
+
+      return function () {
+        value += 0x6D2B79F5;
+
+        let t = value;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function validAddress(address) {
+      return /^0x[a-fA-F0-9]{40}$/.test(address);
+    }
+
+    function shortAddress(address) {
+      return address.slice(0, 6) + "..." + address.slice(-4);
+    }
+
+    function randomAddress() {
+      const rng = createRandom(Date.now());
+      let value = "0x";
+
+      for (let i = 0; i < 40; i++) {
+        value += Math.floor(rng() * 16).toString(16);
+      }
+
+      return value;
+    }
+
+    const simplex = `
+      vec3 mod289(vec3 x) {
+        return x - floor(x * (1.0 / 289.0)) * 289.0;
+      }
+
+      vec4 mod289(vec4 x) {
+        return x - floor(x * (1.0 / 289.0)) * 289.0;
+      }
+
+      vec4 permute(vec4 x) {
+        return mod289(((x * 34.0) + 1.0) * x);
+      }
+
+      vec4 taylorInvSqrt(vec4 r) {
+        return 1.79284291400159 - 0.85373472095314 * r;
+      }
+
+      float snoise(vec3 v) {
+        const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+        vec3 i = floor(v + dot(v, C.yyy));
+        vec3 x0 = v - i + dot(i, C.xxx);
+
+        vec3 g = step(x0.yzx, x0.xyz);
+        vec3 l = 1.0 - g;
+
+        vec3 i1 = min(g.xyz, l.zxy);
+        vec3 i2 = max(g.xyz, l.zxy);
+
+        vec3 x1 = x0 - i1 + C.xxx;
+        vec3 x2 = x0 - i2 + C.yyy;
+        vec3 x3 = x0 - D.yyy;
+
+        i = mod289(i);
+
+        vec4 p = permute(
+          permute(
+            permute(i.z + vec4(0.0, i1.z, i2.z, 1.0))
+            + i.y + vec4(0.0, i1.y, i2.y, 1.0)
+          )
+          + i.x + vec4(0.0, i1.x, i2.x, 1.0)
+        );
+
+        float n_ = 0.142857142857;
+        vec3 ns = n_ * D.wyz - D.xzx;
+
+        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+
+        vec4 x_ = floor(j * ns.z);
+        vec4 y_ = floor(j - 7.0 * x_);
+
+        vec4 x = x_ * ns.x + ns.yyyy;
+        vec4 y = y_ * ns.x + ns.yyyy;
+        vec4 h = 1.0 - abs(x) - abs(y);
+
+        vec4 b0 = vec4(x.xy, y.xy);
+        vec4 b1 = vec4(x.zw, y.zw);
+
+        vec4 s0 = floor(b0) * 2.0 + 1.0;
+        vec4 s1 = floor(b1) * 2.0 + 1.0;
+
+        vec4 sh = -step(h, vec4(0.0));
+
+        vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+        vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+        vec3 p0 = vec3(a0.xy, h.x);
+        vec3 p1 = vec3(a0.zw, h.y);
+        vec3 p2 = vec3(a1.xy, h.z);
+        vec3 p3 = vec3(a1.zw, h.w);
+
+        vec4 norm = taylorInvSqrt(vec4(
+          dot(p0, p0),
+          dot(p1, p1),
+          dot(p2, p2),
+          dot(p3, p3)
+        ));
+
+        p0 *= norm.x;
+        p1 *= norm.y;
+        p2 *= norm.z;
+        p3 *= norm.w;
+
+        vec4 m = max(0.6 - vec4(
+          dot(x0, x0),
+          dot(x1, x1),
+          dot(x2, x2),
+          dot(x3, x3)
+        ), 0.0);
+
+        m *= m;
+
+        return 42.0 * dot(
+          m * m,
+          vec4(
+            dot(p0, x0),
+            dot(p1, x1),
+            dot(p2, x2),
+            dot(p3, x3)
+          )
+        );
+      }
+    `;
+
+    const VignetteShader = {
+      uniforms: {
+        tDiffuse: { value: null },
+        darkness: { value: 1.25 },
+        offset: { value: 1.08 }
+      },
+
+      vertexShader: `
+        varying vec2 vUv;
+
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float darkness;
+        uniform float offset;
+
+        varying vec2 vUv;
+
+        void main() {
+          vec4 color = texture2D(tDiffuse, vUv);
+
+          vec2 uv = (vUv - .5) * offset;
+          float vignette = smoothstep(.1, .82, dot(uv, uv));
+
+          color.rgb *= mix(
+            1.0,
+            1.0 - darkness * .42,
+            vignette
+          );
+
+          gl_FragColor = color;
+        }
+      `
+    };
+
+    function createConfig(address) {
+      const seed = hashString(address.toLowerCase());
+      const rng = createRandom(seed);
+
+      // ── 9阶段生命周期 ──
+      const LIFECYCLE = [
+        { name:'Primordial', minTx:0,    hue:0.60 },
+        { name:'Emerged',    minTx:10,   hue:0.55 },
+        { name:'Awakening',  minTx:50,   hue:0.48 },
+        { name:'Growing',    minTx:150,  hue:0.40 },
+        { name:'Thriving',   minTx:400,  hue:0.25 },
+        { name:'Mature',     minTx:1000, hue:0.14 },
+        { name:'Intense',    minTx:2500, hue:0.07 },
+        { name:'Radiant',    minTx:5000, hue:0.02 },
+        { name:'Ancient',    minTx:8000, hue:0.95 },
+      ];
+      const simTx = 1 + Math.floor(rng() * 15000);
+      let targetStage = 0;
+      for (let i = 8; i >= 0; i--) { if (simTx >= LIFECYCLE[i].minTx) { targetStage = i; break; } }
+      const targetHue = LIFECYCLE[targetStage].hue;
+      const stageName = LIFECYCLE[targetStage].name;
+
+      const color = new THREE.Color();
+      color.setHSL(targetHue, 0.7, 0.5 + rng() * 0.08);
+
+      return {
+        seed,
+        color, targetStage, targetHue, stageName, simTx,
+        radius: 1.55 + rng() * .2,
+        noiseScale: 1.3 + rng() * 1.4,
+        distortion: .08 + rng() * .16,
+        pulse: 1.2 + rng() * 1.3,
+        rotation: .03 + rng() * .05,
+        particleCount: 900 + Math.floor(rng() * 700),
+        trailCount: 220 + Math.floor(rng() * 130),
+        spread: 1.9 + rng() * .35,
+        vitality: 62 + Math.floor(rng() * 38)
+      };
+    }
+
+    function createShellMaterial(config) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uScale: { value: config.noiseScale },
+          uDistortion: { value: config.distortion },
+          uPulse: { value: config.pulse },
+          uColor: { value: config.color }
+        },
+
+        vertexShader: `
+          uniform float uTime;
+          uniform float uScale;
+          uniform float uDistortion;
+          uniform float uPulse;
+
+          varying float vNoise;
+          varying vec3 vNormalWorld;
+
+          ${simplex}
+
+          void main() {
+            vec3 direction = normalize(position);
+
+            float n1 = snoise(
+              direction * uScale +
+              vec3(uTime * .12, uTime * .15, uTime * .1)
+            );
+
+            float n2 = snoise(
+              direction * uScale * 2.3 -
+              vec3(uTime * .18, uTime * .12, uTime * .2)
+            );
+
+            float breathe =
+              1.0 +
+              sin(uTime * uPulse) * .04 +
+              sin(uTime * uPulse * .43) * .015;
+
+            float displacement =
+              n1 * uDistortion +
+              n2 * uDistortion * .22;
+
+            vec3 transformed =
+              position * breathe +
+              direction * displacement;
+
+            vec4 worldPosition =
+              modelMatrix * vec4(transformed, 1.0);
+
+            vNoise = n1 * .5 + .5;
+            vNormalWorld = normalize(mat3(modelMatrix) * normal);
+
+            gl_Position =
+              projectionMatrix *
+              viewMatrix *
+              worldPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 uColor;
+
+          varying float vNoise;
+          varying vec3 vNormalWorld;
+
+          void main() {
+            float edge = pow(1.0 - abs(vNormalWorld.z), 1.5);
+            float energy = .62 + vNoise * .5 + edge * .82;
+
+            vec3 hdrColor = uColor * energy * 1.2;
+
+            gl_FragColor = vec4(hdrColor, .22);
+          }
+        `,
+
+        wireframe: true,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+    }
+
+    function createCoreMaterial(config) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uPulse: { value: config.pulse },
+          uColor: { value: config.color }
+        },
+
+        vertexShader: `
+          uniform float uTime;
+          uniform float uPulse;
+
+          varying vec3 vNormalView;
+
+          void main() {
+            float breath =
+              1.0 +
+              sin(uTime * uPulse) * .025 +
+              sin(uTime * uPulse * .5) * .012;
+
+            vec3 transformed = position * breath;
+
+            vec4 viewPosition =
+              modelViewMatrix * vec4(transformed, 1.0);
+
+            vNormalView = normalize(normalMatrix * normal);
+
+            gl_Position =
+              projectionMatrix * viewPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 uColor;
+
+          varying vec3 vNormalView;
+
+          void main() {
+            float fresnel =
+              pow(1.0 - abs(vNormalView.z), 2.1);
+
+            float energy = .2 + fresnel * 1.55;
+            vec3 hdrColor = uColor * energy * 1.6;
+
+            gl_FragColor =
+              vec4(hdrColor, .14 + fresnel * .24);
+          }
+        `,
+
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending
+      });
+    }
+
+    function createParticles(config) {
+      const count = config.particleCount;
+      const rng = createRandom(config.seed ^ 0x9e3779b9);
+
+      const positions = new Float32Array(count * 3);
+      const sizes = new Float32Array(count);
+      const lives = new Float32Array(count);
+      const phases = new Float32Array(count);
+
+      for (let i = 0; i < count; i++) {
+        const index = i * 3;
+        const theta = rng() * Math.PI * 2;
+        const phi = Math.acos(2 * rng() - 1);
+        const radius = config.spread + (rng() - .5) * .55;
+
+        positions[index] =
+          radius * Math.sin(phi) * Math.cos(theta);
+
+        positions[index + 1] =
+          radius * Math.sin(phi) * Math.sin(theta);
+
+        positions[index + 2] =
+          radius * Math.cos(phi);
+
+        sizes[i] = .55 + rng() * 1.2;
+        lives[i] = rng();
+        phases[i] = rng();
+      }
+
+      const geometry = new THREE.BufferGeometry();
+
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions, 3)
+      );
+
+      geometry.setAttribute(
+        "aSize",
+        new THREE.BufferAttribute(sizes, 1)
+      );
+
+      geometry.setAttribute(
+        "aLife",
+        new THREE.BufferAttribute(lives, 1)
+      );
+
+      geometry.setAttribute(
+        "aPhase",
+        new THREE.BufferAttribute(phases, 1)
+      );
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uColor: { value: config.color },
+          uPixelRatio: {
+            value: Math.min(window.devicePixelRatio, 2)
+          }
+        },
+
+        vertexShader: `
+          attribute float aSize;
+          attribute float aLife;
+          attribute float aPhase;
+
+          uniform float uTime;
+          uniform float uPixelRatio;
+
+          varying float vLife;
+
+          void main() {
+            float life =
+              fract(aLife + uTime * (.045 + aPhase * .025));
+
+            float fadeIn = smoothstep(0.0, .14, life);
+            float fadeOut = 1.0 - smoothstep(.67, 1.0, life);
+
+            vec3 transformed = position;
+
+            float angle =
+              uTime * (.12 + aPhase * .18);
+
+            float c = cos(angle);
+            float s = sin(angle);
+
+            transformed.xz =
+              mat2(c, -s, s, c) * transformed.xz;
+
+            transformed += normalize(transformed) *
+              sin(uTime * 1.4 + aPhase * 18.0) * .04;
+
+            vec4 mvPosition =
+              modelViewMatrix * vec4(transformed, 1.0);
+
+            float depth =
+              1.0 / max(.1, -mvPosition.z);
+
+            gl_PointSize =
+              aSize * uPixelRatio * depth * 34.0 *
+              fadeIn * fadeOut;
+
+            vLife = fadeIn * fadeOut;
+
+            gl_Position =
+              projectionMatrix * mvPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 uColor;
+
+          varying float vLife;
+
+          void main() {
+            vec2 uv = gl_PointCoord - .5;
+            float distanceToCenter = length(uv);
+
+            float soft =
+              1.0 - smoothstep(.08, .5, distanceToCenter);
+
+            float core =
+              1.0 - smoothstep(0.0, .18, distanceToCenter);
+
+            float alpha =
+              (soft * .72 + core * .68) * vLife;
+
+            vec3 hdrColor =
+              uColor * (1.7 + core * 4.0);
+
+            gl_FragColor =
+              vec4(hdrColor, alpha);
+          }
+        `,
+
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+
+      const points =
+        new THREE.Points(geometry, material);
+
+      points.renderOrder = 5;
+
+      return points;
+    }
+
+    function createTrails(config) {
+      const count = config.trailCount;
+      const rng = createRandom(config.seed ^ 0x85ebca6b);
+
+      const positions = new Float32Array(count * 2 * 3);
+      const lives = new Float32Array(count * 2);
+      const sides = new Float32Array(count * 2);
+
+      for (let i = 0; i < count; i++) {
+        const theta = rng() * Math.PI * 2;
+        const phi = Math.acos(2 * rng() - 1);
+
+        const x = Math.sin(phi) * Math.cos(theta);
+        const y = Math.sin(phi) * Math.sin(theta);
+        const z = Math.cos(phi);
+
+        const r1 = config.spread + .08 + rng() * .2;
+        const r2 = r1 + .15 + rng() * .42;
+
+        const index = i * 6;
+
+        positions[index] = x * r1;
+        positions[index + 1] = y * r1;
+        positions[index + 2] = z * r1;
+
+        positions[index + 3] = x * r2;
+        positions[index + 4] = y * r2;
+        positions[index + 5] = z * r2;
+
+        const life = rng();
+
+        lives[i * 2] = life;
+        lives[i * 2 + 1] = life;
+        sides[i * 2] = 0;
+        sides[i * 2 + 1] = 1;
+      }
+
+      const geometry = new THREE.BufferGeometry();
+
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions, 3)
+      );
+
+      geometry.setAttribute(
+        "aLife",
+        new THREE.BufferAttribute(lives, 1)
+      );
+
+      geometry.setAttribute(
+        "aSide",
+        new THREE.BufferAttribute(sides, 1)
+      );
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uColor: { value: config.color }
+        },
+
+        vertexShader: `
+          attribute float aLife;
+          attribute float aSide;
+
+          uniform float uTime;
+
+          varying float vAlpha;
+
+          void main() {
+            float life =
+              fract(aLife + uTime * .043);
+
+            float fade =
+              smoothstep(0.0, .16, life) *
+              (1.0 - smoothstep(.66, 1.0, life));
+
+            vec4 viewPosition =
+              modelViewMatrix * vec4(position, 1.0);
+
+            vAlpha =
+              fade * (.2 + aSide * .18);
+
+            gl_Position =
+              projectionMatrix * viewPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 uColor;
+          varying float vAlpha;
+
+          void main() {
+            gl_FragColor =
+              vec4(uColor * 1.2, vAlpha);
+          }
+        `,
+
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+
+      const lines =
+        new THREE.LineSegments(geometry, material);
+
+      lines.renderOrder = 4;
+
+      return lines;
+    }
+
+    function disposeObject(object) {
+      if (!object) return;
+
+      object.traverse((child) => {
+        if (child.geometry) {
+          child.geometry.dispose();
+        }
+
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m) => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+    }
+
+    function createOrganism(address) {
+      const config = createConfig(address);
+
+      if (app.organism) {
+        app.scene.remove(app.organism);
+        disposeObject(app.organism);
+      }
+
+      const group = new THREE.Group();
+
+      const shell = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(config.radius, 4),
+        createShellMaterial(config)
+      );
+
+      const core = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(config.radius * .87, 4),
+        createCoreMaterial(config)
+      );
+
+      const trails = createTrails(config);
+      const particles = createParticles(config);
+
+      group.add(core);
+      group.add(trails);
+      group.add(shell);
+      group.add(particles);
+
+      app.scene.add(group);
+
+      app.organism = group;
+      app.shell = shell;
+      app.core = core;
+      app.trails = trails;
+      app.particles = particles;
+      app.config = config;
+
+      // ── Smooth birth: scale + particle fade-in ──
+      // 初始冷白 → 目标色
+      app.birthHue = 0.60;
+      app.birthColor = new THREE.Color().setHSL(0.60, 0.3, 0.85);
+      app.targetHue = config.targetHue;
+      app.targetColor = config.color.clone();
+      app.stageName = config.stageName;
+      app.organism.scale.setScalar(0.5);
+      if (app.orbitRings) app.orbitRings.forEach(r => r.visible = false);
+      if (app.satellites) app.satellites.forEach(s => s.visible = false);
+      if (app.particles) { app.particles.material.opacity = 0; app.particles.material.uniforms.uColor.value.copy(app.birthColor); }
+      if (app.trails) { app.trails.material.opacity = 0; app.trails.material.uniforms.uColor.value.copy(app.birthColor); }
+      if (app.shell) { app.shell.material.opacity = 0; app.shell.material.uniforms.uColor.value.copy(app.birthColor); }
+      if (app.core) app.core.material.uniforms.uColor.value.copy(app.birthColor);
+      app.evolutionStart = performance.now() / 1000;
+
+      updateStats(address, config);
+    }
+
+    function updateStats(address, config) {
+      document.getElementById("addressPreview").textContent =
+        shortAddress(address);
+
+      document.getElementById("vitality").textContent =
+        config.vitality + "% vitality";
+
+      document.getElementById("pulse").textContent =
+        config.pulse.toFixed(2) + " Hz";
+
+      document.getElementById("particleCount").textContent =
+        (config.stageName || '—') + ' · ' + config.simTx.toLocaleString() + ' tx';
+
+      // Wallet profile panel
+      const profile = generateWalletProfile(config);
+      const ap = document.getElementById('analysisPanel');
+      if (ap) {
+        ap.style.opacity = '1';
+        document.getElementById('walletRole').textContent = profile.role;
+        document.getElementById('walletTags').textContent = profile.tags;
+        document.getElementById('ageLabel').textContent = profile.age + ' · ' + profile.tx.toLocaleString() + ' tx';
+      }
+    }
+
+    function initThree() {
+      app.scene = new THREE.Scene();
+
+      app.camera = new THREE.PerspectiveCamera(
+        46,
+        window.innerWidth / window.innerHeight,
+        .1,
+        100
+      );
+
+      app.camera.position.set(0, 0, app.currentZoom);
+
+      app.renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: "high-performance", preserveDrawingBuffer: true
+      });
+
+      app.renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, 2)
+      );
+
+      app.renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+      );
+
+      app.renderer.setClearColor(0x05060b, 1); app.renderer.setClearAlpha(1);
+
+      app.renderer.outputColorSpace =
+        THREE.SRGBColorSpace;
+
+      app.renderer.toneMapping =
+        THREE.ACESFilmicToneMapping;
+
+      app.renderer.toneMappingExposure = 0.85;
+
+      document.getElementById("canvas-wrap")
+        .appendChild(app.renderer.domElement);
+
+      const renderPass = new RenderPass(
+        app.scene,
+        app.camera
+      );
+
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(
+          window.innerWidth,
+          window.innerHeight
+        ),
+        0.6,
+        0.45,
+        .16
+      );
+
+      bloomPass.threshold = .5;
+      bloomPass.strength = 0.6;
+      bloomPass.radius = .45;
+
+      const vignettePass =
+        new ShaderPass(VignetteShader);
+
+      app.composer = new EffectComposer(app.renderer);
+      app.composer.addPass(renderPass);
+      app.composer.addPass(bloomPass);
+      app.composer.addPass(vignettePass);
+
+      window.addEventListener("resize", resize);
+      setupControls();
+    }
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      app.camera.aspect = width / height;
+      app.camera.updateProjectionMatrix();
+
+      app.renderer.setSize(width, height);
+      app.composer.setSize(width, height);
+
+      if (app.particles) {
+        app.particles.material.uniforms.uPixelRatio.value =
+          Math.min(window.devicePixelRatio, 2);
+      }
+    }
+
+    function setupControls() {
+      const canvas = app.renderer.domElement;
+
+      canvas.addEventListener("pointerdown", (event) => {
+        app.dragging = true;
+        app.lastX = event.clientX;
+        app.lastY = event.clientY;
+        canvas.setPointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        if (!app.dragging) return;
+
+        const dx = event.clientX - app.lastX;
+        const dy = event.clientY - app.lastY;
+
+        app.targetY += dx * .005;
+        app.targetX += dy * .004;
+
+        app.targetX = Math.max(
+          -.7,
+          Math.min(.7, app.targetX)
+        );
+
+        app.lastX = event.clientX;
+        app.lastY = event.clientY;
+      });
+
+      canvas.addEventListener("pointerup", () => {
+        app.dragging = false;
+      });
+
+      canvas.addEventListener("pointercancel", () => {
+        app.dragging = false;
+      });
+
+      canvas.addEventListener("wheel", (event) => {
+        event.preventDefault();
+
+        app.targetZoom += event.deltaY * .004;
+
+        app.targetZoom = Math.max(
+          3.7,
+          Math.min(8.4, app.targetZoom)
+        );
+      }, { passive: false });
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const time = app.clock.getElapsedTime();
+
+      app.currentX +=
+        (app.targetX - app.currentX) * .055;
+
+      app.currentY +=
+        (app.targetY - app.currentY) * .055;
+
+      app.currentZoom +=
+        (app.targetZoom - app.currentZoom) * .07;
+
+      app.camera.position.z = app.currentZoom;
+
+      if (app.organism) {
+        app.organism.rotation.x =
+          app.currentX + Math.sin(time * .2) * .025;
+
+        app.organism.rotation.y =
+          app.currentY + time * app.config.rotation;
+
+        app.organism.rotation.z =
+          Math.sin(time * .22) * .035;
+
+        app.organism.position.y =
+          Math.sin(time * .72) * .045;
+      }
+
+      if (app.shell) {
+        app.shell.material.uniforms.uTime.value = time;
+      }
+
+      if (app.core) {
+        app.core.material.uniforms.uTime.value = time;
+      }
+
+      if (app.particles) {
+        app.particles.material.uniforms.uTime.value = time;
+      }
+
+      if (app.trails) {
+        app.trails.material.uniforms.uTime.value = time;
+      }
+
+      // ── Smooth birth: color drift + fade + scale (bloom disabled during animation) ──
+      if (app.evolutionStart && app.organism) {
+        const elapsed = (performance.now() / 1000) - app.evolutionStart;
+        const raw = Math.min(1, elapsed / 5.0);
+        const eased = raw < 0.5 ? 4*raw*raw*raw : 1 - Math.pow(-2*raw+2,3)/2;
+        const done = raw >= 1;
+        const s = done ? 1.0 : (0.5 + eased * 0.5);
+        app.organism.scale.setScalar(s);
+        if (app.particles) { app.particles.material.opacity = done ? 0.85 : eased * 0.85; app.particles.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
+        if (app.trails) { app.trails.material.opacity = done ? 0.5 : eased * 0.5; app.trails.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
+        if (app.shell) { app.shell.material.opacity = done ? 0.75 : eased * 0.75; app.shell.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
+        if (app.core) app.core.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased);
+        const cs = Math.floor(eased * (app.targetStage||0));
+        const stages = ['Primordial','Emerged','Awakening','Growing','Thriving','Mature','Intense','Radiant','Ancient'];
+        document.getElementById('particleCount').textContent = done ? (app.stageName||'') : ((stages[cs]||'') + ' → ' + (app.stageName||''));
+        if (done && app.evolutionStart) {
+          app.evolutionStart = 0;
+          if (app.orbitRings) app.orbitRings.forEach(r => r.visible = true);
+          if (app.satellites) app.satellites.forEach(s => s.visible = true);
+        }
+      }
+
+            // Smooth bloom fade-in during evolution
+      let bloomTarget = 0.6;
+      if (app.evolutionStart && app.evolutionStart > 0) {
+        const elapsed = (performance.now() / 1000) - app.evolutionStart;
+        const raw = Math.min(1, elapsed / 5.0);
+        const eased = raw < 0.5 ? 4*raw*raw*raw : 1 - Math.pow(-2*raw+2,3)/2;
+        // Find bloom pass and smoothly increase
+        app.composer.passes.forEach(p => {
+          if (p.strength !== undefined) p.strength = 0.05 + eased * (bloomTarget - 0.05);
+        });
+      } else {
+        app.composer.passes.forEach(p => {
+          if (p.strength !== undefined && p.strength < bloomTarget - 0.01) p.strength = bloomTarget;
+        });
+      }
+            // ── 轨道环 + 卫星旋转 ──
+      if (app.orbitRings) {
+        for (const ring of app.orbitRings) {
+          ring.rotation.x += ring.userData.rx;
+          ring.rotation.y += ring.userData.ry;
+        }
+      }
+      if (app.satellites) {
+        for (const sat of app.satellites) {
+          const phase = sat.userData.orbitPhase + time * sat.userData.orbitSpeed;
+          const r = sat.userData.orbitRadius;
+          const tilt = sat.userData.orbitTilt;
+          sat.position.x = Math.cos(phase) * r;
+          sat.position.y = Math.sin(phase) * Math.sin(tilt) * r;
+          sat.position.z = Math.sin(phase) * Math.cos(tilt) * r;
+        }
+      }
+
+            // ── 远景星尘慢转 ──
+      if (app.starDust) {
+        app.starDust.rotation.y += 0.0003;
+        app.starDust.rotation.x += 0.0001;
+      }
+      if (app.starDust2) {
+        app.starDust2.rotation.y -= 0.0002;
+        app.starDust2.rotation.z += 0.00015;
+      if (app.nebulaDust) {
+        app.nebulaDust.rotation.y += 0.0005;
+        app.nebulaDust.rotation.x += 0.0003;
+      }
+      }
+
+      app.composer.render();
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById("toast");
+
+      toast.textContent = text;
+      toast.classList.add("show");
+
+      clearTimeout(showToast.timer);
+
+      showToast.timer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 1500);
+    }
+
+    function generate() {
+      const input = document.getElementById("addressInput");
+      const address = input.value.trim();
+
+      if (!validAddress(address)) {
+        input.style.borderColor = "rgba(255,80,110,.85)";
+        document.getElementById("statusText").textContent =
+          "INVALID ADDRESS";
+
+        setTimeout(() => {
+          input.style.borderColor = "";
+          document.getElementById("statusText").textContent =
+            "LIFEFORM ACTIVE";
+        }, 1200);
+
+        return;
+      }
+
+      createOrganism(address);
+      showToast("生命体已生成");
+    }
+
+    async function copyAddress() {
+      const value =
+        document.getElementById("addressInput").value;
+
+      try {
+        await navigator.clipboard.writeText(value);
+        showToast("地址已复制");
+      } catch {
+        showToast("复制失败，请手动复制");
+      }
+    }
+
+    function showError(error) {
+      console.error(error);
+
+      const loading = document.getElementById("loading");
+
+      loading.innerHTML = `
+        <div class="error-box">
+          <div class="error-title">INITIALIZATION FAILED</div>
+          <div>
+            页面初始化失败。通常是 CDN 无法访问、浏览器 WebGL 被禁用，
+            或者直接打开本地文件导致模块加载受限。
+          </div>
+          <br>
+          <div>${String(error.message || error)}</div>
+          <br>
+          <div>
+            请使用本地服务器打开，例如：
+            <br>
+            python3 -m http.server 8080
+            <br>
+            然后访问 http://localhost:8080
+          </div>
+        </div>
+      `;
+    }
+
+    function createStarDust() {
+      const count = 2000;
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(count * 3);
+      const col = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        const r = 5 + Math.random() * 40;
+        const th = Math.random() * Math.PI * 2;
+        const ph = Math.acos(2 * Math.random() - 1);
+        pos[i*3] = r * Math.sin(ph) * Math.cos(th);
+        pos[i*3+1] = r * Math.sin(ph) * Math.sin(th);
+        pos[i*3+2] = r * Math.cos(ph);
+        const c = new THREE.Color().setHSL(0.55 + Math.random() * 0.15, 0.3, 0.3 + Math.random() * 0.4);
+        col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      const mat = new THREE.PointsMaterial({
+        size: 0.6, vertexColors: true, transparent: true, opacity: 0.7,
+        blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true
+      });
+      app.starDust = new THREE.Points(geo, mat);
+      app.scene.add(app.starDust);
+
+      // Second layer: larger, dimmer, slower
+      const geo2 = new THREE.BufferGeometry();
+      const pos2 = new Float32Array(400 * 3);
+      for (let i = 0; i < 400; i++) {
+        const r = 8 + Math.random() * 50;
+        const th = Math.random() * Math.PI * 2;
+        const ph = Math.acos(2 * Math.random() - 1);
+        pos2[i*3] = r * Math.sin(ph) * Math.cos(th);
+        pos2[i*3+1] = r * Math.sin(ph) * Math.sin(th);
+        pos2[i*3+2] = r * Math.cos(ph);
+      }
+      geo2.setAttribute('position', new THREE.BufferAttribute(pos2, 3));
+      const mat2 = new THREE.PointsMaterial({
+        size: 0.9, color: 0x446688, transparent: true, opacity: 0.35,
+        blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true
+      });
+      app.starDust2 = new THREE.Points(geo2, mat2);
+
+      // Nebula cloud: large soft particles
+      const geo3 = new THREE.BufferGeometry();
+      const pos3 = new Float32Array(200 * 3);
+      for (let i = 0; i < 200; i++) {
+        const r = 4 + Math.random() * 12;
+        const th = Math.random() * Math.PI * 2;
+        const ph = Math.acos(2 * Math.random() - 1);
+        pos3[i*3] = r * Math.sin(ph) * Math.cos(th);
+        pos3[i*3+1] = r * Math.sin(ph) * Math.sin(th);
+        pos3[i*3+2] = r * Math.cos(ph);
+      }
+      geo3.setAttribute('position', new THREE.BufferAttribute(pos3, 3));
+      const nebulaTex = (() => { const c=document.createElement('canvas'); c.width=c.height=64; const ctx=c.getContext('2d'); const g=ctx.createRadialGradient(32,32,0,32,32,32); g.addColorStop(0,'rgba(255,255,255,0.6)'); g.addColorStop(0.2,'rgba(255,255,255,0.2)'); g.addColorStop(0.5,'rgba(100,150,255,0.05)'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); })();
+      const mat3 = new THREE.PointsMaterial({
+        size: 2.5, map: nebulaTex, color: 0x8899cc,
+        transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending,
+        depthWrite: false, sizeAttenuation: true
+      });
+      app.nebulaDust = new THREE.Points(geo3, mat3);
+      app.scene.add(app.nebulaDust);
+      app.scene.add(app.starDust2);
+    }
+
+    function generateWalletProfile(config) {
+      const tx = config.simTx || 0;
+      let role, tags, age;
+      if (tx < 10) { role = "沉睡者 Sleeper"; tags = "几乎无活动 · 可能弃用"; age = "新生儿"; }
+      else if (tx < 100) { role = "探索者 Explorer"; tags = "偶尔交互 · 谨慎试探"; age = "初入链"; }
+      else if (tx < 500) { role = "活跃用户 Active"; tags = "定期交易 · DeFi入门"; age = "成长期"; }
+      else if (tx < 2000) { role = "深度玩家 Power User"; tags = "频繁交互 · 多协议活跃"; age = "成熟期"; }
+      else if (tx < 5000) { role = "巨鲸雏形 Rising Whale"; tags = "高频交易 · 生态核心"; age = "活跃期"; }
+      else if (tx < 10000) { role = "巨鲸 Whale"; tags = "海量交易 · 链上影响力"; age = "巅峰期"; }
+      else { role = "远古存在 Ancient"; tags = "见证历史 · OG级地址"; age = "远古"; }
+      return { role, tags, age, tx };
+    }
+
+    async function main() {
+      try {
+        initThree();
+
+        const input =
+          document.getElementById("addressInput");
+
+        document.getElementById("generateButton")
+          .addEventListener("click", generate);
+
+        document.getElementById("randomButton")
+          .addEventListener("click", () => {
+            input.value = randomAddress();
+            generate();
+          });
+
+        document.getElementById("copyButton")
+          .addEventListener("click", copyAddress);
+
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            generate();
+          }
+        });
+
+        createOrganism(DEFAULT_ADDRESS);
+        animate();
+
+        setTimeout(() => {
+          document.getElementById("loading")
+            .classList.add("hidden");
+        }, 700);
+      } catch (error) {
+        showError(error);
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>
