@@ -618,6 +618,7 @@
         <div id="walletRole" style="font-size:14px;margin-bottom:8px;">—</div>
         <div id="walletTags" style="font-size:10px;line-height:1.6;">—</div>
         <div id="ageLabel" style="color:rgba(255,255,255,.3);font-size:9px;margin-top:4px;">—</div>
+        <div id="assetList" style="margin-top:8px;"></div>
         <div id="sourceBadge" class="badge-source" style="display:none;margin-top:8px;"></div>
       </section>
 
@@ -777,6 +778,48 @@
           throw new Error("rpc unreachable");
         }
       }
+    }
+
+    // ── Arbitrum One 主流代币注册表（真实持仓资产环） ──
+    const ARBITRUM_TOKENS = [
+      { symbol: "USDC", address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", decimals: 6,  color: 0x2775CA },
+      { symbol: "USDT", address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", decimals: 6,  color: 0x26A17B },
+      { symbol: "WETH", address: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", decimals: 18, color: 0x627EEA },
+      { symbol: "ARB",  address: "0x912CE59144191C1204E64559FE8253a0e49E6548", decimals: 18, color: 0x28A0F0 },
+      { symbol: "WBTC", address: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", decimals: 8,  color: 0xF7931A },
+      { symbol: "DAI",  address: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", decimals: 18, color: 0xF5AC37 },
+      { symbol: "LINK", address: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", decimals: 18, color: 0x2A5ADA },
+      { symbol: "UNI",  address: "0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0", decimals: 18, color: 0xFF007A },
+      { symbol: "GMX",  address: "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a", decimals: 18, color: 0x00A6FF },
+      { symbol: "AAVE", address: "0xba5DdD1f9d7F570dc94a51479a000E3BCE967196", decimals: 18, color: 0xB6509E },
+      { symbol: "LDO",  address: "0x13Ad51ed4F1B7e9Dc168d8a00cB3f4dDD85EfA60", decimals: 18, color: 0x00A3FF },
+      { symbol: "GRT",  address: "0x9623063377AD1B27544C965cCd7342f7EA7e88C7", decimals: 18, color: 0x6747ED }
+    ];
+
+    // 批量查询代币余额（eth_call balanceOf），按持仓量降序
+    async function fetchTokenBalances(address) {
+      const calldata =
+        "0x70a08231" + address.slice(2).padStart(64, "0");
+
+      const results = await Promise.all(
+        ARBITRUM_TOKENS.map(async (token) => {
+          try {
+            const hex = await rpc("eth_call", [
+              { to: token.address, data: calldata }, "latest"
+            ]);
+            const amount =
+              Number(BigInt(hex)) / Math.pow(10, token.decimals);
+            return { ...token, amount };
+          } catch {
+            return { ...token, amount: 0 };
+          }
+        })
+      );
+
+      return results
+        .filter((t) => t.amount > 0)
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 6);
     }
 
     async function fetchOnchainData(address) {
@@ -1428,6 +1471,39 @@
       return lines;
     }
 
+    // ── 真实资产环：持有代币 → 环绕卫星 ──
+    function createAssetRing(assets) {
+      const group = new THREE.Group();
+      const satellites = [];
+
+      assets.forEach((asset, i) => {
+        const count = assets.length;
+        const orbitRadius = 2.45 + i * 0.18;
+        const size =
+          0.07 + Math.min(0.14, Math.log10(1 + asset.amount) * 0.03);
+
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(1, 14, 14),
+          new THREE.MeshBasicMaterial({ color: asset.color })
+        );
+
+        mesh.scale.setScalar(size);
+        mesh.renderOrder = 3;
+        mesh.userData = {
+          symbol: asset.symbol,
+          orbitRadius,
+          orbitPhase: (i / count) * Math.PI * 2,
+          orbitSpeed: 0.5 - i * 0.04,
+          orbitTilt: 0.3 + (i % 2) * 0.15
+        };
+
+        group.add(mesh);
+        satellites.push(mesh);
+      });
+
+      return { group, satellites };
+    }
+
     function disposeObject(object) {
       if (!object) return;
 
@@ -1455,7 +1531,16 @@
         console.warn("链上数据获取失败，回退到模拟模式:", error);
       }
 
+      // 资产环独立查询：失败不影响主体
+      let assets = [];
+      try {
+        assets = await fetchTokenBalances(address);
+      } catch (error) {
+        console.warn("资产查询失败:", error);
+      }
+
       const config = createConfig(address, onchain);
+      config.assets = assets;
 
       if (app.organism) {
         app.scene.remove(app.organism);
@@ -1476,11 +1561,13 @@
 
       const trails = createTrails(config);
       const particles = createParticles(config);
+      const assetRing = createAssetRing(assets);
 
       group.add(core);
       group.add(trails);
       group.add(shell);
       group.add(particles);
+      group.add(assetRing.group);
 
       app.scene.add(group);
 
@@ -1493,6 +1580,7 @@
       app.core = core;
       app.trails = trails;
       app.particles = particles;
+      app.assetRing = assetRing.group;
       app.config = config;
 
       // ── Smooth birth: scale + particle fade-in ──
@@ -1504,8 +1592,7 @@
       app.stageName = config.stageName;
       app.targetStage = config.targetStage;
       app.organism.scale.setScalar(0.5);
-      if (app.orbitRings) app.orbitRings.forEach(r => r.visible = false);
-      if (app.satellites) app.satellites.forEach(s => s.visible = false);
+      if (app.assetRing) app.assetRing.visible = false;
       if (app.particles) { app.particles.material.opacity = 0; app.particles.material.uniforms.uColor.value.copy(app.birthColor); }
       if (app.trails) { app.trails.material.opacity = 0; app.trails.material.uniforms.uColor.value.copy(app.birthColor); }
       if (app.shell) { app.shell.material.opacity = 0; app.shell.material.uniforms.uColor.value.copy(app.birthColor); }
@@ -1579,6 +1666,41 @@
             ? ' · 合约 · 真实余额'
             : ' · ' + profile.tx.toLocaleString() + ' tx · ' +
               (config.real ? '真实链上数据' : '模拟数据'));
+
+        // 真实持仓列表（资产环）
+        const assetEl = document.getElementById('assetList');
+        if (assetEl) {
+          assetEl.textContent = '';
+          const assets = config.assets || [];
+          if (assets.length) {
+            const title = document.createElement('div');
+            title.textContent = 'HOLDINGS · 资产环';
+            title.style.cssText =
+              'color:rgba(255,255,255,.25);font-size:8px;' +
+              'letter-spacing:.15em;margin-bottom:5px;';
+            assetEl.appendChild(title);
+
+            assets.forEach((a) => {
+              const row = document.createElement('div');
+              row.style.cssText =
+                'display:flex;justify-content:space-between;' +
+                'align-items:center;font-size:9px;margin-bottom:3px;' +
+                'font-family:monospace;';
+              const sym = document.createElement('span');
+              sym.textContent = a.symbol;
+              sym.style.color =
+                '#' + a.color.toString(16).padStart(6, '0');
+              const amt = document.createElement('span');
+              amt.textContent = a.amount.toLocaleString(
+                undefined, { maximumFractionDigits: 4 }
+              );
+              amt.style.color = 'rgba(255,255,255,.55)';
+              row.appendChild(sym);
+              row.appendChild(amt);
+              assetEl.appendChild(row);
+            });
+          }
+        }
 
         const badge = document.getElementById('sourceBadge');
         if (badge) {
@@ -1863,8 +1985,7 @@
         }
         if (done && app.evolutionStart) {
           app.evolutionStart = 0;
-          if (app.orbitRings) app.orbitRings.forEach(r => r.visible = true);
-          if (app.satellites) app.satellites.forEach(s => s.visible = true);
+          if (app.assetRing) app.assetRing.visible = true;
         }
       }
 
@@ -1897,16 +2018,11 @@
           (1 + (app.pulseBoost || 0) * 0.07)
         );
       }
-            // ── 轨道环 + 卫星旋转 ──
-      if (app.orbitRings) {
-        for (const ring of app.orbitRings) {
-          ring.rotation.x += ring.userData.rx;
-          ring.rotation.y += ring.userData.ry;
-        }
-      }
-      if (app.satellites) {
-        for (const sat of app.satellites) {
-          const phase = sat.userData.orbitPhase + time * sat.userData.orbitSpeed;
+            // ── 资产环卫星旋转 ──
+      if (app.assetRing) {
+        const time2 = app.clock.getElapsedTime();
+        for (const sat of app.assetRing.children) {
+          const phase = sat.userData.orbitPhase + time2 * sat.userData.orbitSpeed;
           const r = sat.userData.orbitRadius;
           const tilt = sat.userData.orbitTilt;
           sat.position.x = Math.cos(phase) * r;
