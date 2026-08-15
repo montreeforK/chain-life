@@ -99,6 +99,31 @@
       -webkit-backdrop-filter: blur(26px) saturate(135%);
     }
 
+    .history-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .history-chip {
+      padding: 3px 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.55);
+      font-family: monospace;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all .25s ease;
+    }
+
+    .history-chip:hover {
+      border-color: rgba(255,255,255,.35);
+      color: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.1);
+    }
+
     .small-button.mint {
       color: #8be8a0;
       border-color: rgba(139,232,160,.35);
@@ -551,6 +576,8 @@
           </button>
         </div>
 
+        <div id="historyStrip" class="history-strip" style="display:none;"></div>
+
         <div class="footer-line">
           <div class="status">
             <span class="status-dot"></span>
@@ -558,6 +585,10 @@
           </div>
 
           <div class="actions">
+            <button id="connectButton" class="small-button">
+              连接钱包
+            </button>
+
             <button id="mintButton" class="small-button mint">
               铸造 NFT
             </button>
@@ -1056,6 +1087,55 @@
               (simTx > 0 ? 8 : 0) + (isContract ? 10 : 0)))
         : 62 + Math.floor(rng() * 38);
 
+      // ── 形态分化：按 能量层级 × 身份 决定物种特征 ──
+      let radius = 1.55 + rng() * .2;
+      let rotation = .03 + rng() * .05;
+      let particleCount = 900 + Math.floor(rng() * 700);
+      let trailCount = 220 + Math.floor(rng() * 130);
+      let distortion = .08 + rng() * .16;
+      let pulse = 1.2 + rng() * 1.3;
+      let ringCount = 0;
+      let cage = false;
+
+      if (isContract) {
+        // 合约：晶体几何化 + 线框笼
+        distortion *= 1.6;
+        rotation *= .8;
+        cage = true;
+        ringCount = 1;
+      }
+
+      if (energy >= 8000 || (balanceEth || 0) >= 1000) {
+        // 泰坦：更大、更慢、三层光环
+        radius += .3;
+        rotation *= .45;
+        trailCount = Math.floor(trailCount * 1.3);
+        particleCount = Math.floor(particleCount * 1.1);
+        ringCount = Math.max(ringCount, 3);
+      } else if (energy >= 2000) {
+        radius += .18;
+        rotation *= .6;
+        ringCount = Math.max(ringCount, 2);
+      } else if (energy >= 500) {
+        rotation *= 1.15;
+        particleCount = Math.floor(particleCount * 1.25);
+        ringCount = Math.max(ringCount, 1);
+      } else if (energy < 50) {
+        // 沉睡/空白：更小、更慢、更稀疏
+        radius -= .1;
+        rotation *= .5;
+        pulse *= .7;
+        particleCount = Math.floor(particleCount * .6);
+        trailCount = Math.floor(trailCount * .7);
+      }
+
+      if (address.toLowerCase() ===
+          "0x0000000000000000000000000000000000000000") {
+        // 万物坟墓：极慢、三层暗环
+        rotation *= .3;
+        ringCount = 3;
+      }
+
       return {
         seed,
         color, targetStage, targetHue, stageName, simTx, energy,
@@ -1063,14 +1143,16 @@
         zeroAddress:
           address.toLowerCase() ===
           "0x0000000000000000000000000000000000000000",
-        radius: 1.55 + rng() * .2,
+        radius,
         noiseScale: 1.3 + rng() * 1.4,
-        distortion: .08 + rng() * .16,
-        pulse: 1.2 + rng() * 1.3,
-        rotation: .03 + rng() * .05,
-        particleCount: 900 + Math.floor(rng() * 700),
-        trailCount: 220 + Math.floor(rng() * 130),
+        distortion,
+        pulse,
+        rotation,
+        particleCount,
+        trailCount,
         spread: 1.9 + rng() * .35,
+        ringCount,
+        cage,
         vitality
       };
     }
@@ -1504,6 +1586,43 @@
       return { group, satellites };
     }
 
+    // ── 形态光环：泰坦/巨鲸的多层环 ──
+    function createMorphRings(count, radiusBase, config) {
+      const group = new THREE.Group();
+
+      for (let i = 0; i < count; i++) {
+        const torus = new THREE.Mesh(
+          new THREE.TorusGeometry(radiusBase + i * 0.24, 0.009, 8, 90),
+          new THREE.MeshBasicMaterial({
+            color: config.color,
+            transparent: true,
+            opacity: 0.4 + (count - i) * 0.08
+          })
+        );
+
+        torus.rotation.x = Math.PI / 2 + i * 0.4;
+        torus.rotation.y = i * 0.7;
+        torus.userData.rx = (i % 2 ? 1 : -1) * (0.0008 + i * 0.0005);
+        torus.userData.ry = 0.0006 + i * 0.0004;
+        group.add(torus);
+      }
+
+      return group;
+    }
+
+    // ── 合约晶体笼 ──
+    function createCage(config) {
+      return new THREE.Mesh(
+        new THREE.IcosahedronGeometry(config.radius * 1.28, 1),
+        new THREE.MeshBasicMaterial({
+          color: config.color,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.22
+        })
+      );
+    }
+
     function disposeObject(object) {
       if (!object) return;
 
@@ -1562,12 +1681,18 @@
       const trails = createTrails(config);
       const particles = createParticles(config);
       const assetRing = createAssetRing(assets);
+      const morphRings = createMorphRings(
+        config.ringCount, config.radius + 0.35, config
+      );
 
       group.add(core);
       group.add(trails);
       group.add(shell);
       group.add(particles);
       group.add(assetRing.group);
+      group.add(morphRings);
+
+      if (config.cage) group.add(createCage(config));
 
       app.scene.add(group);
 
@@ -1581,6 +1706,7 @@
       app.trails = trails;
       app.particles = particles;
       app.assetRing = assetRing.group;
+      app.morphRings = morphRings;
       app.config = config;
 
       // ── Smooth birth: scale + particle fade-in ──
@@ -2018,6 +2144,14 @@
           (1 + (app.pulseBoost || 0) * 0.07)
         );
       }
+            // ── 形态光环自转 ──
+      if (app.morphRings) {
+        for (const ring of app.morphRings.children) {
+          ring.rotation.x += ring.userData.rx;
+          ring.rotation.y += ring.userData.ry;
+        }
+      }
+
             // ── 资产环卫星旋转 ──
       if (app.assetRing) {
         const time2 = app.clock.getElapsedTime();
@@ -2081,10 +2215,75 @@
 
       try {
         await createOrganism(address);
+        saveHistory(address);
         showToast("生命体已生成");
       } catch (error) {
         console.error(error);
         showToast("生成失败");
+      }
+    }
+
+    // ── 历史记录（localStorage） ──
+    const HISTORY_KEY = "chainlife-history";
+
+    function loadHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory(address) {
+      const list = loadHistory().filter((a) => a !== address);
+      list.unshift(address);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 10)));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const strip = document.getElementById("historyStrip");
+      if (!strip) return;
+
+      const list = loadHistory();
+      strip.textContent = "";
+      if (!list.length) {
+        strip.style.display = "none";
+        return;
+      }
+
+      strip.style.display = "flex";
+      list.forEach((addr) => {
+        const chip = document.createElement("button");
+        chip.className = "history-chip";
+        chip.textContent = shortAddress(addr);
+        chip.title = addr;
+        chip.addEventListener("click", () => {
+          document.getElementById("addressInput").value = addr;
+          generate();
+        });
+        strip.appendChild(chip);
+      });
+    }
+
+    // ── 连接钱包 ──
+    async function connectWallet() {
+      if (typeof window.ethereum === "undefined") {
+        showToast("请安装 MetaMask 钱包");
+        return;
+      }
+
+      try {
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts"
+        });
+        if (accounts && accounts[0]) {
+          document.getElementById("addressInput").value = accounts[0];
+          await generate();
+        }
+      } catch (error) {
+        console.error(error);
+        showToast("连接失败，请重试");
       }
     }
 
@@ -2402,6 +2601,11 @@
 
         document.getElementById("mintButton")
           .addEventListener("click", mintNFT);
+
+        document.getElementById("connectButton")
+          .addEventListener("click", connectWallet);
+
+        renderHistory();
 
         input.addEventListener("keydown", (event) => {
           if (event.key === "Enter") {
