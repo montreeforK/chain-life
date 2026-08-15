@@ -745,9 +745,14 @@
       ];
     }
 
-    // ── 真实链上数据：通过 /rpc 代理读取 Arbitrum One ──
-    async function rpc(method, params) {
-      const res = await fetch("/rpc", {
+    // ── 真实链上数据：三层回退读取 Arbitrum One ──
+    // 1) 直连官方 RPC（支持 CORS，GitHub Pages / 本地均可用）
+    // 2) 本地 /rpc 代理（server.js）
+    // 3) 两者都失败 → 模拟模式
+    const DIRECT_RPC_URL = "https://arb1.arbitrum.io/rpc";
+
+    async function rpcRequest(url, method, params) {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
@@ -760,6 +765,18 @@
       if (data.error) throw new Error(data.error.message || "rpc error");
 
       return data.result;
+    }
+
+    async function rpc(method, params) {
+      try {
+        return await rpcRequest(DIRECT_RPC_URL, method, params);
+      } catch (directErr) {
+        try {
+          return await rpcRequest("/rpc", method, params);
+        } catch (proxyErr) {
+          throw new Error("rpc unreachable");
+        }
+      }
     }
 
     async function fetchOnchainData(address) {
