@@ -99,6 +99,28 @@
       -webkit-backdrop-filter: blur(26px) saturate(135%);
     }
 
+    .small-button.mint {
+      color: #8be8a0;
+      border-color: rgba(139,232,160,.35);
+      background: rgba(139,232,160,.08);
+    }
+
+    .small-button.mint:hover {
+      background: rgba(139,232,160,.16);
+      box-shadow: 0 0 14px rgba(139,232,160,.25);
+    }
+
+    .stats, .analysis {
+      transition: box-shadow .5s ease;
+    }
+
+    .stats:hover, .analysis:hover {
+      box-shadow:
+        0 24px 80px rgba(0,0,0,.3),
+        inset 0 1px rgba(255,255,255,.12),
+        0 0 28px rgba(120,160,255,.08);
+    }
+
     .panel {
       position: absolute;
       top: 26px;
@@ -272,9 +294,83 @@
       text-transform: uppercase;
     }
 
+    .vitality-block {
+      margin-bottom: 12px;
+    }
+
+    .vitality-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .vitality-bar {
+      height: 6px;
+      margin-top: 6px;
+      background: rgba(255,255,255,.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .vitality-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg,
+        #5bc0eb, #7ddb8c, #ffd166, #ff8c42, #ff4dd8);
+      transition: width 1.2s ease;
+    }
+
+    .stage-track {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 0 2px;
+    }
+
+    .stage-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.12);
+      transition: all .4s ease;
+    }
+
+    .stage-dot.passed {
+      background: rgba(255,255,255,.38);
+    }
+
+    .stage-dot.on {
+      background: #fff;
+      box-shadow: 0 0 8px rgba(255,255,255,.9);
+      transform: scale(1.4);
+    }
+
+    .tag-pill {
+      display: inline-block;
+      margin: 0 4px 4px 0;
+      padding: 2px 8px;
+      border: 1px solid;
+      border-radius: 999px;
+      font-size: 9px;
+      letter-spacing: .02em;
+    }
+
+    .badge-source {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.5);
+      font-size: 8px;
+      letter-spacing: .08em;
+    }
+
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 12px;
     }
 
@@ -431,7 +527,7 @@
       <section class="glass panel">
         <div class="header">
           <div>
-            <div class="eyebrow">ON-CHAIN LIFE / ETHEREUM</div>
+            <div class="eyebrow">ON-CHAIN LIFE / ARBITRUM ONE</div>
             <h1>链上生命</h1>
           </div>
 
@@ -447,7 +543,7 @@
             autocomplete="off"
             spellcheck="false"
             value="0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-            placeholder="输入 Ethereum 地址"
+            placeholder="输入任意 EVM 地址"
           />
 
           <button id="generateButton" class="generate">
@@ -462,8 +558,12 @@
           </div>
 
           <div class="actions">
+            <button id="mintButton" class="small-button mint">
+              铸造 NFT
+            </button>
+
             <button id="randomButton" class="small-button">
-              随机地址
+              随机生命体
             </button>
 
             <button id="copyButton" class="small-button">
@@ -476,31 +576,49 @@
       <section class="glass stats">
         <div class="stats-title">LIFE SIGNATURE</div>
 
-        <div class="stats-grid">
-          <div>
-            <div class="stat-label">Vitality</div>
-            <div id="vitality" class="stat-value">--</div>
+        <div class="vitality-block">
+          <div class="vitality-head">
+            <span class="stat-label">Vitality</span>
+            <span id="vitality" class="stat-value">--</span>
           </div>
+          <div class="vitality-bar">
+            <div id="vitalityBar" class="vitality-fill"></div>
+          </div>
+        </div>
 
+        <div class="stage-track" id="stageTrack"></div>
+
+        <div class="stats-grid">
           <div>
             <div class="stat-label">Pulse</div>
             <div id="pulse" class="stat-value">--</div>
           </div>
 
           <div>
-            <div class="stat-label">Particles</div>
+            <div class="stat-label">Stage</div>
             <div id="particleCount" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Balance</div>
+            <div id="balance" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Chain</div>
+            <div id="chainLabel" class="stat-value">ARB ONE</div>
           </div>
         </div>
       </section>
 
       <div class="hint">
 
-      <section class="glass analysis" id="analysisPanel" style="position:absolute;right:26px;bottom:26px;width:220px;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
+      <section class="glass analysis" id="analysisPanel" style="position:absolute;right:26px;bottom:26px;width:230px;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
         <div style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:12px;">Wallet Profile</div>
-        <div id="walletRole" style="color:rgba(255,255,255,.8);font-size:13px;margin-bottom:6px;">—</div>
-        <div id="walletTags" style="color:rgba(255,255,255,.4);font-size:10px;line-height:1.6;">—</div>
+        <div id="walletRole" style="font-size:14px;margin-bottom:8px;">—</div>
+        <div id="walletTags" style="font-size:10px;line-height:1.6;">—</div>
         <div id="ageLabel" style="color:rgba(255,255,255,.3);font-size:9px;margin-top:4px;">—</div>
+        <div id="sourceBadge" class="badge-source" style="display:none;margin-top:8px;"></div>
       </section>
 
         DRAG TO ROTATE · SCROLL TO ZOOM
@@ -510,6 +628,7 @@
     <div id="toast" class="toast"></div>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
   <script type="importmap">
 {
   "imports": {
@@ -557,8 +676,14 @@
       currentZoom: 5.4,
       dragging: false,
       lastX: 0,
-      lastY: 0
+      lastY: 0,
+      pulseBoost: 0,
+      birthScale: 1,
+      downX: 0,
+      downY: 0
     };
+
+    window.app = app; // 调试/自动化入口
 
     function hashString(value) {
       let h1 = 0x811c9dc5;
@@ -602,15 +727,65 @@
       return address.slice(0, 6) + "..." + address.slice(-4);
     }
 
+    // 随机生命体素材池：Arbitrum One 上真实存在的有趣地址
+    // （余额/交易数实测于 2026-08-15，从 0 tx 空地址到 160 万 tx 巨鲸，颜色跨度完整）
+    const CURATED_ADDRESSES = [
+      "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", // 活跃小鲸 · 17 tx · 1.19 ETH
+      "0xF977814e90dA44bFA03b6295A0616a897441aceC", // Binance 热钱包 · 681 tx · ~10,070 ETH
+      "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe", // Gate 热钱包 · 163万 tx · ~2,769 ETH
+      "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH 合约 · 持有 ~139,000 ETH
+      "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", // WBTC 合约 · 冷合约
+      "0xE592427A0AEce92De3Edee1F18E0157C05861564", // Uniswap SwapRouter 合约
+      "0x0000000000000000000000000000000000000000", // 零地址 · 万物坟墓 · ~26 ETH 焚烧归集
+    ];
+
     function randomAddress() {
-      const rng = createRandom(Date.now());
-      let value = "0x";
+      return CURATED_ADDRESSES[
+        Math.floor(Math.random() * CURATED_ADDRESSES.length)
+      ];
+    }
 
-      for (let i = 0; i < 40; i++) {
-        value += Math.floor(rng() * 16).toString(16);
-      }
+    // ── 真实链上数据：通过 /rpc 代理读取 Arbitrum One ──
+    async function rpc(method, params) {
+      const res = await fetch("/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
+      });
 
-      return value;
+      if (!res.ok) throw new Error("rpc http " + res.status);
+
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error.message || "rpc error");
+
+      return data.result;
+    }
+
+    async function fetchOnchainData(address) {
+      const work = (async () => {
+        const [balanceWei, txCount, code, blockNumber] =
+          await Promise.all([
+            rpc("eth_getBalance", [address, "latest"]),
+            rpc("eth_getTransactionCount", [address, "latest"]),
+            rpc("eth_getCode", [address, "latest"]),
+            rpc("eth_blockNumber", [])
+          ]);
+
+        return {
+          balanceEth: parseInt(balanceWei, 16) / 1e18,
+          txCount: parseInt(txCount, 16),
+          isContract: code && code !== "0x",
+          blockNumber: parseInt(blockNumber, 16),
+          network: "Arbitrum One"
+        };
+      })();
+
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("rpc timeout")), 8000)
+      );
+
+      return Promise.race([work, timeout]);
     }
 
     const simplex = `
@@ -758,7 +933,7 @@
       `
     };
 
-    function createConfig(address) {
+    function createConfig(address, onchain) {
       const seed = hashString(address.toLowerCase());
       const rng = createRandom(seed);
 
@@ -774,18 +949,60 @@
         { name:'Radiant',    minTx:5000, hue:0.02 },
         { name:'Ancient',    minTx:8000, hue:0.95 },
       ];
-      const simTx = 1 + Math.floor(rng() * 15000);
+
+      // 链上能量驱动生命阶段：余额加权(财富即岁月) + EOA 真实交易数。
+      // RPC 不可用时回退到哈希模拟。
+      let simTx = 1 + Math.floor(rng() * 15000);
+      let energy = simTx;
+      let balanceEth = null;
+      let isContract = false;
+      let real = false;
+
+      if (onchain) {
+        real = true;
+        balanceEth = onchain.balanceEth;
+        isContract = onchain.isContract;
+        const balanceBoost =
+          Math.min(8000, Math.round((balanceEth || 0) * 400));
+        // 合约地址的 nonce 只统计合约创建数，不纳入能量
+        const txPart = isContract ? 0 : onchain.txCount;
+        energy = balanceBoost + txPart;
+        simTx = isContract ? 0 : onchain.txCount;
+      }
+
       let targetStage = 0;
-      for (let i = 8; i >= 0; i--) { if (simTx >= LIFECYCLE[i].minTx) { targetStage = i; break; } }
-      const targetHue = LIFECYCLE[targetStage].hue;
+      for (let i = 8; i >= 0; i--) { if (energy >= LIFECYCLE[i].minTx) { targetStage = i; break; } }
+      // 每个地址叠加微小色相偏移，保持个体独特性
+      const hueJitter = (rng() - 0.5) * 0.05;
+      const targetHue =
+        ((LIFECYCLE[targetStage].hue + hueJitter) % 1 + 1) % 1;
       const stageName = LIFECYCLE[targetStage].name;
 
+      // ── LDR 色彩预算（8 位管线）：高饱和 + 高亮度 ──
+      // 红/品红系在深蓝底上容易浑浊，专项提亮加饱和
+      let lightness = 0.62 + rng() * 0.06;
+      let saturation = 0.85;
+      if (targetHue < 0.08 || targetHue > 0.9) {
+        lightness += 0.06;
+        saturation = Math.min(1, saturation + 0.08);
+      }
+
       const color = new THREE.Color();
-      color.setHSL(targetHue, 0.7, 0.5 + rng() * 0.08);
+      color.setHSL(targetHue, saturation, lightness);
+
+      const vitality = real
+        ? Math.min(99, 55 +
+            Math.round(Math.log10(1 + (balanceEth || 0)) * 6 +
+              (simTx > 0 ? 8 : 0) + (isContract ? 10 : 0)))
+        : 62 + Math.floor(rng() * 38);
 
       return {
         seed,
-        color, targetStage, targetHue, stageName, simTx,
+        color, targetStage, targetHue, stageName, simTx, energy,
+        real, balanceEth, isContract,
+        zeroAddress:
+          address.toLowerCase() ===
+          "0x0000000000000000000000000000000000000000",
         radius: 1.55 + rng() * .2,
         noiseScale: 1.3 + rng() * 1.4,
         distortion: .08 + rng() * .16,
@@ -794,7 +1011,7 @@
         particleCount: 900 + Math.floor(rng() * 700),
         trailCount: 220 + Math.floor(rng() * 130),
         spread: 1.9 + rng() * .35,
-        vitality: 62 + Math.floor(rng() * 38)
+        vitality
       };
     }
 
@@ -866,9 +1083,9 @@
 
           void main() {
             float edge = pow(1.0 - abs(vNormalWorld.z), 1.5);
-            float energy = .62 + vNoise * .5 + edge * .82;
+            float energy = .55 + vNoise * .35 + edge * .6;
 
-            vec3 hdrColor = uColor * energy * 1.2;
+            vec3 hdrColor = uColor * energy * 1.15;
 
             gl_FragColor = vec4(hdrColor, .22);
           }
@@ -922,8 +1139,8 @@
             float fresnel =
               pow(1.0 - abs(vNormalView.z), 2.1);
 
-            float energy = .2 + fresnel * 1.55;
-            vec3 hdrColor = uColor * energy * 1.6;
+            float energy = .25 + fresnel * 1.1;
+            vec3 hdrColor = uColor * energy * 1.15;
 
             gl_FragColor =
               vec4(hdrColor, .14 + fresnel * .24);
@@ -993,7 +1210,7 @@
           uTime: { value: 0 },
           uColor: { value: config.color },
           uPixelRatio: {
-            value: Math.min(window.devicePixelRatio, 2)
+            value: Math.min(window.devicePixelRatio, 1.5)
           }
         },
 
@@ -1064,7 +1281,7 @@
               (soft * .72 + core * .68) * vLife;
 
             vec3 hdrColor =
-              uColor * (1.7 + core * 4.0);
+              uColor * (1.05 + core * 1.9);
 
             gl_FragColor =
               vec4(hdrColor, alpha);
@@ -1212,8 +1429,16 @@
       });
     }
 
-    function createOrganism(address) {
-      const config = createConfig(address);
+    async function createOrganism(address) {
+      let onchain = null;
+
+      try {
+        onchain = await fetchOnchainData(address);
+      } catch (error) {
+        console.warn("链上数据获取失败，回退到模拟模式:", error);
+      }
+
+      const config = createConfig(address, onchain);
 
       if (app.organism) {
         app.scene.remove(app.organism);
@@ -1242,6 +1467,10 @@
 
       app.scene.add(group);
 
+      // 固定渲染顺序，避免透明物体每帧按距离重排导致视觉抖动
+      core.renderOrder = -1;
+      shell.renderOrder = 0;
+
       app.organism = group;
       app.shell = shell;
       app.core = core;
@@ -1256,6 +1485,7 @@
       app.targetHue = config.targetHue;
       app.targetColor = config.color.clone();
       app.stageName = config.stageName;
+      app.targetStage = config.targetStage;
       app.organism.scale.setScalar(0.5);
       if (app.orbitRings) app.orbitRings.forEach(r => r.visible = false);
       if (app.satellites) app.satellites.forEach(s => s.visible = false);
@@ -1265,10 +1495,10 @@
       if (app.core) app.core.material.uniforms.uColor.value.copy(app.birthColor);
       app.evolutionStart = performance.now() / 1000;
 
-      updateStats(address, config);
+      updateStats(address, config, onchain);
     }
 
-    function updateStats(address, config) {
+    function updateStats(address, config, onchain) {
       document.getElementById("addressPreview").textContent =
         shortAddress(address);
 
@@ -1279,16 +1509,69 @@
         config.pulse.toFixed(2) + " Hz";
 
       document.getElementById("particleCount").textContent =
-        (config.stageName || '—') + ' · ' + config.simTx.toLocaleString() + ' tx';
+        (config.stageName || '—') + ' · ' +
+        (config.isContract
+          ? '合约'
+          : config.simTx.toLocaleString() + ' tx');
+
+      const bar = document.getElementById("vitalityBar");
+      if (bar) bar.style.width = config.vitality + "%";
+
+      renderStageDots(config.targetStage);
+
+      const balanceEl = document.getElementById("balance");
+      if (balanceEl) {
+        balanceEl.textContent = config.real
+          ? "Ξ " + config.balanceEth.toFixed(4)
+          : "— 模拟";
+      }
+
+      const status = document.getElementById("statusText");
+      if (status) {
+        status.textContent = config.real
+          ? "LIFEFORM ACTIVE · ARBITRUM ONE"
+          : "LIFEFORM ACTIVE · SIMULATED";
+      }
 
       // Wallet profile panel
       const profile = generateWalletProfile(config);
       const ap = document.getElementById('analysisPanel');
       if (ap) {
         ap.style.opacity = '1';
-        document.getElementById('walletRole').textContent = profile.role;
-        document.getElementById('walletTags').textContent = profile.tags;
-        document.getElementById('ageLabel').textContent = profile.age + ' · ' + profile.tx.toLocaleString() + ' tx';
+
+        const roleEl = document.getElementById('walletRole');
+        roleEl.textContent = profile.icon + ' ' + profile.role;
+        roleEl.style.color = profile.accent;
+        roleEl.style.textShadow = '0 0 12px ' + profile.accent + '66';
+
+        const tagsEl = document.getElementById('walletTags');
+        tagsEl.textContent = '';
+        profile.tags.forEach((t) => {
+          const pill = document.createElement('span');
+          pill.className = 'tag-pill';
+          pill.textContent = t;
+          pill.style.borderColor = profile.accent + '55';
+          pill.style.color = profile.accent;
+          pill.style.background = profile.accent + '14';
+          tagsEl.appendChild(pill);
+        });
+
+        document.getElementById('ageLabel').textContent =
+          profile.age +
+          (config.isContract
+            ? ' · 合约 · 真实余额'
+            : ' · ' + profile.tx.toLocaleString() + ' tx · ' +
+              (config.real ? '真实链上数据' : '模拟数据'));
+
+        const badge = document.getElementById('sourceBadge');
+        if (badge) {
+          badge.style.display = 'inline-block';
+          badge.textContent = config.real
+            ? (config.isContract
+              ? 'ARBITRUM · CONTRACT'
+              : 'ARBITRUM · LIVE')
+            : 'SIMULATED';
+        }
       }
     }
 
@@ -1306,11 +1589,12 @@
 
       app.renderer = new THREE.WebGLRenderer({
         antialias: true,
-        powerPreference: "high-performance", preserveDrawingBuffer: true
+        powerPreference: "high-performance"
       });
 
+      // 上限 1.5 倍像素比：视网膜屏上比 2.0 少 ~44% 像素，bloom 后处理更流畅
       app.renderer.setPixelRatio(
-        Math.min(window.devicePixelRatio, 2)
+        Math.min(window.devicePixelRatio, 1.5)
       );
 
       app.renderer.setSize(
@@ -1341,22 +1625,78 @@
           window.innerWidth,
           window.innerHeight
         ),
-        0.6,
-        0.45,
+        0.8,
+        0.55,
         .16
       );
 
-      bloomPass.threshold = .5;
-      bloomPass.strength = 0.6;
-      bloomPass.radius = .45;
+      bloomPass.threshold = .32;
+      bloomPass.strength = 0.8;
+      bloomPass.radius = .55;
+
+      // ── macOS Chrome (Metal/ANGLE) 半浮点渲染目标有随机黑块伪影 ──
+      // 把 bloom 内部目标与 composer 目标全部强制为 8 位，规避驱动 bug
+      [
+        bloomPass.renderTargetBright,
+        ...bloomPass.renderTargetsHorizontal,
+        ...bloomPass.renderTargetsVertical
+      ].forEach((rt) => {
+        if (rt) {
+          rt.type = THREE.UnsignedByteType;
+          if (rt.texture) rt.texture.type = THREE.UnsignedByteType;
+        }
+      });
+
+      const composerTarget = new THREE.WebGLRenderTarget(
+        1, 1,
+        { type: THREE.UnsignedByteType }
+      );
 
       const vignettePass =
         new ShaderPass(VignetteShader);
 
-      app.composer = new EffectComposer(app.renderer);
+      // ── 色彩分级：饱和度增强 + 柔和 S 曲线 + 高光微提 ──
+      // 8 位管线里找回"电影感"的关键一步
+      const gradePass = new ShaderPass({
+        uniforms: {
+          tDiffuse: { value: null }
+        },
+
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+
+        fragmentShader: `
+          uniform sampler2D tDiffuse;
+          varying vec2 vUv;
+
+          void main() {
+            vec3 c = texture2D(tDiffuse, vUv).rgb;
+
+            float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+            c = mix(vec3(l), c, 1.15);
+            c = c * c * (3.0 - 2.0 * c) * 0.7 + c * 0.3;
+            c = c + (1.0 - c) * c * 0.05;
+
+            gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        `
+      });
+
+      app.composer =
+        new EffectComposer(app.renderer, composerTarget);
       app.composer.addPass(renderPass);
       app.composer.addPass(bloomPass);
       app.composer.addPass(vignettePass);
+      app.composer.addPass(gradePass);
+      app.composer.setSize(
+        window.innerWidth,
+        window.innerHeight
+      );
 
       window.addEventListener("resize", resize);
       setupControls();
@@ -1369,12 +1709,15 @@
       app.camera.aspect = width / height;
       app.camera.updateProjectionMatrix();
 
+      app.renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, 1.5)
+      );
       app.renderer.setSize(width, height);
       app.composer.setSize(width, height);
 
       if (app.particles) {
         app.particles.material.uniforms.uPixelRatio.value =
-          Math.min(window.devicePixelRatio, 2);
+          Math.min(window.devicePixelRatio, 1.5);
       }
     }
 
@@ -1385,6 +1728,8 @@
         app.dragging = true;
         app.lastX = event.clientX;
         app.lastY = event.clientY;
+        app.downX = event.clientX;
+        app.downY = event.clientY;
         canvas.setPointerCapture(event.pointerId);
       });
 
@@ -1406,7 +1751,13 @@
         app.lastY = event.clientY;
       });
 
-      canvas.addEventListener("pointerup", () => {
+      canvas.addEventListener("pointerup", (event) => {
+        // 未拖动视为点击：激发一次呼吸脉冲
+        const dx = event.clientX - app.downX;
+        const dy = event.clientY - app.downY;
+        if (Math.abs(dx) + Math.abs(dy) < 6) {
+          app.pulseBoost = 1;
+        }
         app.dragging = false;
       });
 
@@ -1479,14 +1830,20 @@
         const eased = raw < 0.5 ? 4*raw*raw*raw : 1 - Math.pow(-2*raw+2,3)/2;
         const done = raw >= 1;
         const s = done ? 1.0 : (0.5 + eased * 0.5);
-        app.organism.scale.setScalar(s);
+        app.birthScale = s;
         if (app.particles) { app.particles.material.opacity = done ? 0.85 : eased * 0.85; app.particles.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
         if (app.trails) { app.trails.material.opacity = done ? 0.5 : eased * 0.5; app.trails.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
         if (app.shell) { app.shell.material.opacity = done ? 0.75 : eased * 0.75; app.shell.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
         if (app.core) app.core.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased);
         const cs = Math.floor(eased * (app.targetStage||0));
         const stages = ['Primordial','Emerged','Awakening','Growing','Thriving','Mature','Intense','Radiant','Ancient'];
-        document.getElementById('particleCount').textContent = done ? (app.stageName||'') : ((stages[cs]||'') + ' → ' + (app.stageName||''));
+        // 仅当阶段序号变化时才更新 DOM，避免演化期间每帧触发布局
+        if (cs !== app.lastStageTick || done !== app.lastStageDone) {
+          app.lastStageTick = cs;
+          app.lastStageDone = done;
+          document.getElementById('particleCount').textContent = done ? (app.stageName||'') : ((stages[cs]||'') + ' → ' + (app.stageName||''));
+          renderStageDots(cs);
+        }
         if (done && app.evolutionStart) {
           app.evolutionStart = 0;
           if (app.orbitRings) app.orbitRings.forEach(r => r.visible = true);
@@ -1495,7 +1852,7 @@
       }
 
             // Smooth bloom fade-in during evolution
-      let bloomTarget = 0.6;
+      let bloomTarget = 0.8 + (app.pulseBoost || 0) * 0.8;
       if (app.evolutionStart && app.evolutionStart > 0) {
         const elapsed = (performance.now() / 1000) - app.evolutionStart;
         const raw = Math.min(1, elapsed / 5.0);
@@ -1505,9 +1862,23 @@
           if (p.strength !== undefined) p.strength = 0.05 + eased * (bloomTarget - 0.05);
         });
       } else {
+        // 双向平滑追随目标强度（脉冲冲高后回落）
         app.composer.passes.forEach(p => {
-          if (p.strength !== undefined && p.strength < bloomTarget - 0.01) p.strength = bloomTarget;
+          if (p.strength !== undefined) {
+            p.strength += (bloomTarget - p.strength) * 0.06;
+          }
         });
+      }
+
+      // ── 点击脉冲衰减 + 呼吸缩放 ──
+      if (app.pulseBoost > 0) {
+        app.pulseBoost = Math.max(0, app.pulseBoost - 0.04);
+      }
+      if (app.organism) {
+        app.organism.scale.setScalar(
+          (app.birthScale || 1) *
+          (1 + (app.pulseBoost || 0) * 0.07)
+        );
       }
             // ── 轨道环 + 卫星旋转 ──
       if (app.orbitRings) {
@@ -1557,7 +1928,7 @@
       }, 1500);
     }
 
-    function generate() {
+    async function generate() {
       const input = document.getElementById("addressInput");
       const address = input.value.trim();
 
@@ -1575,8 +1946,13 @@
         return;
       }
 
-      createOrganism(address);
-      showToast("生命体已生成");
+      try {
+        await createOrganism(address);
+        showToast("生命体已生成");
+      } catch (error) {
+        console.error(error);
+        showToast("生成失败");
+      }
     }
 
     async function copyAddress() {
@@ -1589,6 +1965,88 @@
       } catch {
         showToast("复制失败，请手动复制");
       }
+    }
+
+    // ── 链上生命 NFT（Arbitrum Sepolia, 2026-08-15 部署）──
+    const CHAINLIFE_NFT = {
+      address: "0x8ECEea508F628aA346a10F300218FBaAc9E7b1Ee",
+      chainId: "0x66EEE",
+      abi: [
+        "function mint(uint16 txCount, uint8 r, uint8 g, uint8 b, uint16 energy, uint8 stage, uint8 vitality) returns (uint256)"
+      ]
+    };
+
+    async function mintNFT() {
+      const config = app.config;
+      const btn = document.getElementById("mintButton");
+      if (!btn) return;
+
+      if (!config) { showToast("请先生成生命体"); return; }
+      if (typeof window.ethereum === "undefined") {
+        showToast("请安装 MetaMask 钱包");
+        return;
+      }
+      if (typeof window.ethers === "undefined") {
+        showToast("ethers 库未加载，请刷新重试");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "连接中...";
+
+      try {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: CHAINLIFE_NFT.chainId }]
+          });
+        } catch (switchErr) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: CHAINLIFE_NFT.chainId,
+              chainName: "Arbitrum Sepolia",
+              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
+              blockExplorerUrls: ["https://sepolia.arbiscan.io/"]
+            }]
+          });
+        }
+
+        btn.textContent = "铸造中...";
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(
+          CHAINLIFE_NFT.address, CHAINLIFE_NFT.abi, signer
+        );
+
+        const c = config.color;
+        const tx = await contract.mint(
+          Math.min(65535, Math.round(config.simTx)),
+          Math.round(c.r * 255),
+          Math.round(c.g * 255),
+          Math.round(c.b * 255),
+          Math.min(65535, Math.round(config.energy)),
+          config.targetStage,
+          config.vitality
+        );
+
+        await tx.wait();
+
+        showToast("NFT 铸造成功！一钱包一生命体");
+        console.log("NFT tx:", tx.hash);
+        console.log("NFT 查看:", "https://sepolia.arbiscan.io/nft/" +
+          CHAINLIFE_NFT.address + "/" +
+          ethers.keccak256(await signer.getAddress()));
+      } catch (error) {
+        console.error(error);
+        const msg = error.shortMessage || error.message || String(error);
+        showToast("铸造失败: " + msg.slice(0, 60));
+      }
+
+      btn.disabled = false;
+      btn.textContent = "铸造 NFT";
     }
 
     function showError(error) {
@@ -1682,17 +2140,112 @@
       app.scene.add(app.starDust2);
     }
 
+    // ── 钱包原型系统：活跃度 × 财富 × 身份 三维分类 ──
     function generateWalletProfile(config) {
+      const e = config.energy || config.simTx || 0;
       const tx = config.simTx || 0;
-      let role, tags, age;
-      if (tx < 10) { role = "沉睡者 Sleeper"; tags = "几乎无活动 · 可能弃用"; age = "新生儿"; }
-      else if (tx < 100) { role = "探索者 Explorer"; tags = "偶尔交互 · 谨慎试探"; age = "初入链"; }
-      else if (tx < 500) { role = "活跃用户 Active"; tags = "定期交易 · DeFi入门"; age = "成长期"; }
-      else if (tx < 2000) { role = "深度玩家 Power User"; tags = "频繁交互 · 多协议活跃"; age = "成熟期"; }
-      else if (tx < 5000) { role = "巨鲸雏形 Rising Whale"; tags = "高频交易 · 生态核心"; age = "活跃期"; }
-      else if (tx < 10000) { role = "巨鲸 Whale"; tags = "海量交易 · 链上影响力"; age = "巅峰期"; }
-      else { role = "远古存在 Ancient"; tags = "见证历史 · OG级地址"; age = "远古"; }
-      return { role, tags, age, tx };
+      const bal = config.balanceEth;
+      const isContract = !!config.isContract;
+
+      let role, icon, age, accent;
+      const tags = [];
+
+      if (config.zeroAddress) {
+        role = "万物坟墓 The Void";
+        icon = "🕳️";
+        accent = "#8b6bff";
+        age = "虚无";
+        tags.push("零地址", "焚烧归集");
+      } else if (isContract) {
+        if (bal >= 1000) {
+          role = "机构金库 Institutional Vault";
+          icon = "🏦"; accent = "#ff5c5c"; age = "巨量储备";
+          tags.push("机构级储备", "资金中枢");
+        } else if (bal >= 10) {
+          role = "协议中枢 Protocol Nexus";
+          icon = "⚙️"; accent = "#5ce1e6"; age = "协议骨干";
+          tags.push("协议核心", "生态枢纽");
+        } else if (bal > 0) {
+          role = "活跃合约 Active Contract";
+          icon = "🔩"; accent = "#7ddb8c"; age = "运行中";
+          tags.push("链上合约", "持续运转");
+        } else {
+          role = "冷合约 Cold Contract";
+          icon = "🧊"; accent = "#8ea2b8"; age = "沉寂";
+          tags.push("无余额", "待唤醒");
+        }
+      } else {
+        if (e >= 8000) {
+          role = "远古存在 Ancient";
+          icon = "🐉"; accent = "#ff4dd8"; age = "远古";
+          tags.push("见证历史", "OG级地址");
+        } else if (e >= 2000) {
+          role = "巨鲸 Whale";
+          icon = "🐋"; accent = "#ff8c42"; age = "巅峰期";
+          tags.push("海量交易", "链上影响力");
+        } else if (e >= 500) {
+          role = "深度玩家 Power User";
+          icon = "🎮"; accent = "#ffd166"; age = "成熟期";
+          tags.push("频繁交互", "多协议活跃");
+        } else if (e >= 150) {
+          role = "活跃用户 Active";
+          icon = "⚡"; accent = "#7ddb8c"; age = "成长期";
+          tags.push("定期交易", "DeFi 常客");
+        } else if (e >= 50) {
+          role = "探索者 Explorer";
+          icon = "🧭"; accent = "#5bc0eb"; age = "初入链";
+          tags.push("偶尔交互", "谨慎试探");
+        } else if (e >= 10) {
+          role = "初学者 Beginner";
+          icon = "🌱"; accent = "#9be8ff"; age = "萌芽期";
+          tags.push("刚刚起步", "链上学习");
+        } else if (bal > 0) {
+          role = "潜眠者 Dormant";
+          icon = "🌙"; accent = "#c9b8ff"; age = "沉睡期";
+          tags.push("持有资产", "静待觉醒");
+        } else {
+          role = "空白之卵 Empty Egg";
+          icon = "🥚"; accent = "#c9d6e5"; age = "待孵化";
+          tags.push("全新地址", "尚无足迹");
+        }
+
+        // 组合标签：活跃 × 财富 交叉特征
+        if (tx >= 100 && bal !== null && bal < 0.5)
+          tags.push("空投猎人");
+        if (tx < 20 && bal !== null && bal >= 10)
+          tags.push("囤币大户 HODLer");
+        if (tx >= 1000 && bal !== null && bal >= 100)
+          tags.push("鲸群核心");
+        if (bal !== null && bal >= 1 && tx >= 20 && tx < 100)
+          tags.push("财富积累中");
+      }
+
+      return { role, icon, tags, age, tx, accent };
+    }
+
+    // ── 9 阶段点阵 ──
+    const STAGE_NAMES =
+      ['Primordial','Emerged','Awakening','Growing',
+       'Thriving','Mature','Intense','Radiant','Ancient'];
+
+    function renderStageDots(current) {
+      const track = document.getElementById("stageTrack");
+      if (!track) return;
+
+      if (!track.children.length) {
+        STAGE_NAMES.forEach((name) => {
+          const dot = document.createElement("div");
+          dot.className = "stage-dot";
+          dot.title = name;
+          track.appendChild(dot);
+        });
+      }
+
+      [...track.children].forEach((dot, i) => {
+        dot.className = "stage-dot" +
+          (i < current ? " passed" : "") +
+          (i === current ? " on" : "");
+      });
     }
 
     async function main() {
@@ -1713,6 +2266,9 @@
 
         document.getElementById("copyButton")
           .addEventListener("click", copyAddress);
+
+        document.getElementById("mintButton")
+          .addEventListener("click", mintNFT);
 
         input.addEventListener("keydown", (event) => {
           if (event.key === "Enter") {
