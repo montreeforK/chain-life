@@ -1063,11 +1063,29 @@
 
       let targetStage = 0;
       for (let i = 8; i >= 0; i--) { if (energy >= LIFECYCLE[i].minTx) { targetStage = i; break; } }
-      // 每个地址叠加微小色相偏移，保持个体独特性
-      const hueJitter = (rng() - 0.5) * 0.05;
-      const targetHue =
-        ((LIFECYCLE[targetStage].hue + hueJitter) % 1 + 1) % 1;
       const stageName = LIFECYCLE[targetStage].name;
+
+      // ── 生命信号光谱：log(能量) 连续映射全色环 ──
+      // 蓝(0.62) → 青(0.50) → 绿(0.30) → 黄(0.15) → 橙红(0.05) → 品红(0.95)
+      const eLog = Math.log10(1 + energy);
+      const SPECTRUM_ANCHORS = [
+        [0.0, 0.62], [1.5, 0.50], [3.0, 0.30],
+        [4.0, 0.15], [5.0, 0.05], [6.2, 0.95]
+      ];
+      let spectrumHue = 0.62;
+      for (let i = 0; i < SPECTRUM_ANCHORS.length - 1; i++) {
+        const [x0, h0] = SPECTRUM_ANCHORS[i];
+        const [x1, h1] = SPECTRUM_ANCHORS[i + 1];
+        if (eLog >= x0 && eLog <= x1) {
+          spectrumHue = h0 + ((eLog - x0) / (x1 - x0)) * (h1 - h0);
+          break;
+        }
+        if (eLog > x1) spectrumHue = h1;
+      }
+
+      // 身份色相偏移 ±0.06：同能量级的钱包也各有光谱位置
+      const hueJitter = (rng() - 0.5) * 0.12;
+      const targetHue = ((spectrumHue + hueJitter) % 1 + 1) % 1;
 
       // ── LDR 色彩预算（8 位管线）：高饱和 + 高亮度 ──
       // 红/品红系在深蓝底上容易浑浊，专项提亮加饱和
@@ -1080,6 +1098,14 @@
 
       const color = new THREE.Color();
       color.setHSL(targetHue, saturation, lightness);
+
+      // 光谱辅色：色相 +0.15 旋转，用于壳面虹彩渐变
+      const color2 = new THREE.Color();
+      color2.setHSL(
+        ((targetHue + 0.15 + rng() * 0.06) % 1 + 1) % 1,
+        Math.min(1, saturation * 0.9),
+        lightness * 0.92
+      );
 
       const vitality = real
         ? Math.min(99, 55 +
@@ -1138,7 +1164,7 @@
 
       return {
         seed,
-        color, targetStage, targetHue, stageName, simTx, energy,
+        color, color2, targetStage, targetHue, stageName, simTx, energy,
         real, balanceEth, isContract,
         zeroAddress:
           address.toLowerCase() ===
@@ -1164,7 +1190,8 @@
           uScale: { value: config.noiseScale },
           uDistortion: { value: config.distortion },
           uPulse: { value: config.pulse },
-          uColor: { value: config.color }
+          uColor: { value: config.color },
+          uColor2: { value: config.color2 }
         },
 
         vertexShader: `
@@ -1219,6 +1246,7 @@
 
         fragmentShader: `
           uniform vec3 uColor;
+          uniform vec3 uColor2;
 
           varying float vNoise;
           varying vec3 vNormalWorld;
@@ -1227,7 +1255,9 @@
             float edge = pow(1.0 - abs(vNormalWorld.z), 1.5);
             float energy = .55 + vNoise * .35 + edge * .6;
 
-            vec3 hdrColor = uColor * energy * 1.15;
+            // 光谱虹彩：主色与辅色随噪声渐变混合
+            vec3 spectral = mix(uColor, uColor2, vNoise * 0.55);
+            vec3 hdrColor = spectral * energy * 1.15;
 
             gl_FragColor = vec4(hdrColor, .22);
           }
@@ -1553,39 +1583,6 @@
       return lines;
     }
 
-    // ── 真实资产环：持有代币 → 环绕卫星 ──
-    function createAssetRing(assets) {
-      const group = new THREE.Group();
-      const satellites = [];
-
-      assets.forEach((asset, i) => {
-        const count = assets.length;
-        const orbitRadius = 2.45 + i * 0.18;
-        const size =
-          0.07 + Math.min(0.14, Math.log10(1 + asset.amount) * 0.03);
-
-        const mesh = new THREE.Mesh(
-          new THREE.SphereGeometry(1, 14, 14),
-          new THREE.MeshBasicMaterial({ color: asset.color })
-        );
-
-        mesh.scale.setScalar(size);
-        mesh.renderOrder = 3;
-        mesh.userData = {
-          symbol: asset.symbol,
-          orbitRadius,
-          orbitPhase: (i / count) * Math.PI * 2,
-          orbitSpeed: 0.5 - i * 0.04,
-          orbitTilt: 0.3 + (i % 2) * 0.15
-        };
-
-        group.add(mesh);
-        satellites.push(mesh);
-      });
-
-      return { group, satellites };
-    }
-
     // ── 形态光环：泰坦/巨鲸的多层环 ──
     function createMorphRings(count, radiusBase, config) {
       const group = new THREE.Group();
@@ -1680,7 +1677,6 @@
 
       const trails = createTrails(config);
       const particles = createParticles(config);
-      const assetRing = createAssetRing(assets);
       const morphRings = createMorphRings(
         config.ringCount, config.radius + 0.35, config
       );
@@ -1689,7 +1685,6 @@
       group.add(trails);
       group.add(shell);
       group.add(particles);
-      group.add(assetRing.group);
       group.add(morphRings);
 
       if (config.cage) group.add(createCage(config));
@@ -1705,7 +1700,6 @@
       app.core = core;
       app.trails = trails;
       app.particles = particles;
-      app.assetRing = assetRing.group;
       app.morphRings = morphRings;
       app.config = config;
 
@@ -1718,7 +1712,6 @@
       app.stageName = config.stageName;
       app.targetStage = config.targetStage;
       app.organism.scale.setScalar(0.5);
-      if (app.assetRing) app.assetRing.visible = false;
       if (app.particles) { app.particles.material.opacity = 0; app.particles.material.uniforms.uColor.value.copy(app.birthColor); }
       if (app.trails) { app.trails.material.opacity = 0; app.trails.material.uniforms.uColor.value.copy(app.birthColor); }
       if (app.shell) { app.shell.material.opacity = 0; app.shell.material.uniforms.uColor.value.copy(app.birthColor); }
@@ -2111,7 +2104,6 @@
         }
         if (done && app.evolutionStart) {
           app.evolutionStart = 0;
-          if (app.assetRing) app.assetRing.visible = true;
         }
       }
 
@@ -2152,18 +2144,6 @@
         }
       }
 
-            // ── 资产环卫星旋转 ──
-      if (app.assetRing) {
-        const time2 = app.clock.getElapsedTime();
-        for (const sat of app.assetRing.children) {
-          const phase = sat.userData.orbitPhase + time2 * sat.userData.orbitSpeed;
-          const r = sat.userData.orbitRadius;
-          const tilt = sat.userData.orbitTilt;
-          sat.position.x = Math.cos(phase) * r;
-          sat.position.y = Math.sin(phase) * Math.sin(tilt) * r;
-          sat.position.z = Math.sin(phase) * Math.cos(tilt) * r;
-        }
-      }
 
             // ── 远景星尘慢转 ──
       if (app.starDust) {
