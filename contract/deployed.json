@@ -1,6 +1,6 @@
 {
   "name": "ChainLifeNFT",
-  "address": "0x8ECEea508F628aA346a10F300218FBaAc9E7b1Ee",
+  "address": "0xE802D61F0B5D10E2805119e0fbA696770a95Ed86",
   "network": "Arbitrum Sepolia (421614)",
   "abi": [
     {
@@ -166,6 +166,68 @@
       "inputs": [
         {
           "indexed": true,
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "energy",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "stage",
+          "type": "uint8"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "txCount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Evolved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "eventId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "xp",
+          "type": "uint256"
+        }
+      ],
+      "name": "Fed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
           "internalType": "address",
           "name": "from",
           "type": "address"
@@ -221,6 +283,29 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "eventId",
+          "type": "string"
+        }
+      ],
+      "name": "feed",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -310,6 +395,26 @@
           "internalType": "uint8",
           "name": "vitality",
           "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "xp",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lastFeedAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "bornAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "lastEvent",
+          "type": "string"
         }
       ],
       "stateMutability": "view",
@@ -495,6 +600,37 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        }
+      ],
+      "name": "sync",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "tokenId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint16",
+          "name": "txCount",
+          "type": "uint16"
+        }
+      ],
+      "name": "syncStats",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {

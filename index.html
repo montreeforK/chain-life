@@ -2279,12 +2279,16 @@
       }
     }
 
-    // ── 链上生命 NFT（Arbitrum Sepolia, 2026-08-15 部署）──
+    // ── 链上生命 NFT · Living NFT v2（Arbitrum Sepolia, 2026-08-31 部署）──
     const CHAINLIFE_NFT = {
-      address: "0x8ECEea508F628aA346a10F300218FBaAc9E7b1Ee",
+      address: "0xE802D61F0B5D10E2805119e0fbA696770a95Ed86",
       chainId: "0x66EEE",
       abi: [
-        "function mint(uint16 txCount, uint8 r, uint8 g, uint8 b, uint16 energy, uint8 stage, uint8 vitality) returns (uint256)"
+        "function mint(uint16 txCount, uint8 r, uint8 g, uint8 b, uint16 energy, uint8 stage, uint8 vitality) returns (uint256)",
+        "function feed(uint256 tokenId, string source, string eventId)",
+        "function sync(uint256 tokenId)",
+        "function syncStats(uint256 tokenId, uint16 txCount)",
+        "function lifeParams(uint256 tokenId) view returns (uint16 txCount, uint8 r, uint8 g, uint8 b, uint16 energy, uint8 stage, uint8 vitality, uint256 xp, uint256 lastFeedAt, uint256 bornAt, string lastEvent)"
       ]
     };
 

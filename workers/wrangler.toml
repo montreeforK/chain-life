@@ -1,0 +1,11 @@
+# Chain Life Worker — 部署前先:
+#   1. wrangler kv namespace create CHAINLIFE_KV  → 把返回的 id 填到下面
+#   2. wrangler secret put DEEPSEEK_API_KEY       → 粘贴 DeepSeek key
+#   3. wrangler deploy
+name = "chain-life"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+[[kv_namespaces]]
+binding = "CHAINLIFE_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
