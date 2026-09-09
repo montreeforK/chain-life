@@ -600,6 +600,10 @@
             <button id="copyButton" class="small-button">
               复制地址
             </button>
+
+            <button id="shareButton" class="small-button">
+              分享卡片
+            </button>
           </div>
         </div>
       </section>
@@ -1811,6 +1815,7 @@
       app.particles = particles;
       app.morphRings = morphRings;
       app.config = config;
+      app.address = address;
 
       // ── Smooth birth: scale + particle fade-in ──
       // 初始冷白 → 目标色
@@ -2647,6 +2652,132 @@
       }
     }
 
+    // ── 分享卡片：canvas 渲染生命体卡片（下载 PNG + 复制深链接）──
+    function shareCard() {
+      const config = app.config;
+      if (!config || !app.address) { showToast("请先生成生命体"); return; }
+      showToast("正在生成卡片…");
+      try {
+        const card = drawShareCard();
+        // 下载
+        const a = document.createElement("a");
+        a.download = "chainlife-" + app.address.slice(2, 10) + ".png";
+        a.href = card.toDataURL("image/png");
+        a.click();
+        // 复制深链接
+        navigator.clipboard?.writeText(
+          "https://montreefork.github.io/chain-life/?wallet=" + app.address
+        ).catch(() => {});
+        showToast("卡片已下载 · 链接已复制");
+      } catch (e) {
+        console.error("shareCard:", e);
+        showToast("卡片生成失败: " + String(e.message || e).slice(0, 120));
+      }
+    }
+
+    function drawShareCard() {
+      const config = app.config;
+      const profile = generateWalletProfile(config);
+      if (!config || !profile) return null;
+      const bioName = (document.getElementById("bioName")?.textContent || "").trim();
+      const name = bioName && !bioName.includes("·") && bioName !== "—"
+        ? bioName : STAGES9[config.targetStage] + " Lifeform";
+
+      const W = 1200, H = 630;
+      const c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      const ctx = c.getContext("2d");
+
+      // 背景：深空渐变 + 星尘
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, "#05060b");
+      bg.addColorStop(1, "#0b1226");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      const rng = createRandom(hashString(app.address.toLowerCase()));
+      for (let i = 0; i < 130; i++) {
+        const x = rng() * W, y = rng() * H;
+        const r = 0.5 + rng() * 1.4;
+        ctx.fillStyle = "rgba(255,255,255," + (0.15 + rng() * 0.5).toFixed(2) + ")";
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const cx = 350, cy = H / 2;
+      // .r/.g/.b 对 THREE.Color 实例与普通对象均可用（config 可能被序列化丢失原型）
+      const rgb = (k) => Math.round(
+        (k === 0 ? config.color.r : k === 1 ? config.color.g : config.color.b) * 255
+      );
+      const col = `rgb(${rgb(0)},${rgb(1)},${rgb(2)})`;
+      const haloCount = config.targetStage >= 8 ? 3 : config.targetStage >= 7 ? 2 : config.targetStage >= 5 ? 1 : 0;
+
+      // 光环（与 NFT SVG 同语言：Mature 起外光环）
+      for (let i = 0; i < haloCount; i++) {
+        ctx.strokeStyle = i === 1 ? "rgba(255,255,255,0.16)" : col;
+        ctx.globalAlpha = i === 0 ? 0.28 : i === 1 ? 0.16 : 0.35;
+        ctx.lineWidth = i === 0 ? 2 : 1.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 150 + i * 42, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // 光晕球体
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 165);
+      glow.addColorStop(0, col);
+      glow.addColorStop(0.45, col);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 165, 0, Math.PI * 2);
+      ctx.fill();
+
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 86);
+      core.addColorStop(0, "rgba(255,255,255,0.95)");
+      core.addColorStop(0.18, col);
+      core.addColorStop(0.7, col);
+      core.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 86, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // 文字区
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.font = "500 22px -apple-system, 'PingFang SC', sans-serif";
+      ctx.letterSpacing = "6px";
+      ctx.fillText("CHAIN LIFE", 620, 180);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 64px -apple-system, 'PingFang SC', sans-serif";
+      ctx.fillText(name.slice(0, 24), 620, 270);
+
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.font = "400 26px -apple-system, 'PingFang SC', sans-serif";
+      ctx.fillText(
+        STAGES9[config.targetStage] + " · Energy " +
+        Math.round(config.energy) + " · " + profile.role,
+        620, 330
+      );
+
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.font = "400 18px monospace";
+      const deepLink =
+        "montreefork.github.io/chain-life/?wallet=" + app.address;
+      ctx.fillText(deepLink, 620, 410);
+
+      ctx.fillStyle = "rgba(255,255,255,0.22)";
+      ctx.font = "400 16px -apple-system, 'PingFang SC', sans-serif";
+      ctx.fillText("A living onchain organism · Arbitrum", 620, 560);
+
+      return c;
+    }
+
     function showError(error) {
       console.error(error);
 
@@ -2865,6 +2996,9 @@
         document.getElementById("copyButton")
           .addEventListener("click", copyAddress);
 
+        document.getElementById("shareButton")
+          .addEventListener("click", shareCard);
+
         document.getElementById("mintButton")
           .addEventListener("click", mintNFT);
 
@@ -2879,7 +3013,15 @@
           }
         });
 
-        createOrganism(DEFAULT_ADDRESS);
+        // 深链接：?wallet=0x… 直接展示指定钱包（分享链路闭环）
+        const urlWallet =
+          new URLSearchParams(location.search).get("wallet");
+        if (urlWallet && /^0x[0-9a-fA-F]{40}$/.test(urlWallet)) {
+          input.value = urlWallet;
+          createOrganism(urlWallet);
+        } else {
+          createOrganism(DEFAULT_ADDRESS);
+        }
         animate();
 
         setTimeout(() => {
