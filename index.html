@@ -653,6 +653,16 @@
         <div id="sourceBadge" class="badge-source" style="display:none;margin-top:8px;"></div>
       </section>
 
+      <section class="glass bio" id="bioPanel" style="position:absolute;left:26px;bottom:26px;width:300px;max-height:52vh;overflow-y:auto;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
+        <div style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:10px;">Life Story · AI 生平</div>
+        <div id="bioName" style="font-size:15px;margin-bottom:6px;">—</div>
+        <div id="bioTraits" style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:10px;">—</div>
+        <div id="bioStory" style="font-size:11px;line-height:1.7;color:rgba(255,255,255,.85);min-height:34px;"></div>
+        <div id="bioEpitaph" style="font-size:10px;font-style:italic;color:rgba(255,255,255,.35);margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;"></div>
+        <div id="bioStatus" style="font-size:9px;color:rgba(255,255,255,.25);margin-top:8px;"></div>
+        <div id="bioHunts" style="margin-top:10px;"></div>
+      </section>
+
         DRAG TO ROTATE · SCROLL TO ZOOM
       </div>
     </div>
@@ -777,11 +787,14 @@
       ];
     }
 
-    // ── 真实链上数据：三层回退读取 Arbitrum One ──
-    // 1) 直连官方 RPC（支持 CORS，GitHub Pages / 本地均可用）
-    // 2) 本地 /rpc 代理（server.js）
-    // 3) 两者都失败 → 模拟模式
+    // ── 真实链上数据：四层回退读取 Arbitrum One ──
+    // 1) Alchemy（赞助商 RPC，免费层，浏览器直连可用）
+    // 2) 直连官方 RPC（支持 CORS）
+    // 3) 本地 /rpc 代理（server.js）
+    // 4) 全部失败 → 模拟模式
     const DIRECT_RPC_URL = "https://arb1.arbitrum.io/rpc";
+    const ALCHEMY_KEY = "alch_9iKrEXhhAmZ97F0hKHH9G";
+    const ALCHEMY_URL = "https://arb-mainnet.g.alchemy.com/v2/" + ALCHEMY_KEY;
 
     async function rpcRequest(url, method, params) {
       const res = await fetch(url, {
@@ -801,14 +814,107 @@
 
     async function rpc(method, params) {
       try {
-        return await rpcRequest(DIRECT_RPC_URL, method, params);
-      } catch (directErr) {
+        return await rpcRequest(ALCHEMY_URL, method, params);
+      } catch (alchemyErr) {
         try {
-          return await rpcRequest("/rpc", method, params);
-        } catch (proxyErr) {
-          throw new Error("rpc unreachable");
+          return await rpcRequest(DIRECT_RPC_URL, method, params);
+        } catch (directErr) {
+          try {
+            return await rpcRequest("/rpc", method, params);
+          } catch (proxyErr) {
+            throw new Error("rpc unreachable");
+          }
         }
       }
+    }
+
+    // ── Alchemy 交易历史（AI 生平数据源）──
+    async function fetchTransferHistory(address) {
+      try {
+        const data = await rpcRequest(ALCHEMY_URL, "alchemy_getAssetTransfers", [{
+          fromBlock: "0x0",
+          toBlock: "latest",
+          order: "desc",
+          maxCount: "0x10",
+          withMetadata: true,
+          excludeZeroValue: true,
+          category: ["external"],
+          toAddress: address
+        }]);
+        return data.transfers || [];
+      } catch {
+        return [];
+      }
+    }
+
+    // ── GMX 捕猎记录（官方 squid 索引，免 key）──
+    const GMX_SQUID_URL = "https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/graphql";
+
+    async function fetchGmxTrades(address) {
+      // squid 的 account_eq 大小写敏感，必须用校验和地址（ethers.getAddress）
+      let checksummed = address;
+      try { checksummed = ethers.getAddress(address); } catch {}
+      const q = JSON.stringify({
+        query: `{ tradeActions(limit: 20, where: { account_eq: "${checksummed}" }, orderBy: timestamp_DESC) { id timestamp eventName sizeDeltaUsd isLong executionPrice transactionHash } }`
+      });
+      const tryUrl = async (url) => {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: q
+        });
+        if (!r.ok) throw new Error("gmx http " + r.status);
+        const d = await r.json();
+        return d.data?.tradeActions || [];
+      };
+      try {
+        return await tryUrl(GMX_SQUID_URL);
+      } catch {
+        try {
+          return await tryUrl("/gmx");
+        } catch {
+          return [];
+        }
+      }
+    }
+
+    // 结构化事实 → AI 生平 prompt（只给事实，不给结论）
+    function buildBioFacts(address, config, onchain, assets, transfers, gmxTrades, role) {
+      const fmtValue = (v) => {
+        const n = parseFloat(v);
+        if (!isFinite(n)) return v;
+        return n >= 1000 ? (n / 1000).toFixed(2) + "k" : n.toFixed(4);
+      };
+      const biggest = transfers.length
+        ? transfers.reduce((a, b) =>
+            parseFloat(b.value || 0) > parseFloat(a.value || 0) ? b : a)
+        : null;
+      const oldest = transfers.length ? transfers[transfers.length - 1] : null;
+      const gmxVolume = gmxTrades.reduce(
+        (s, t) => s + parseFloat(t.sizeDeltaUsd || 0) / 1e30, 0);
+
+      const facts = {
+        address: address.slice(0, 10) + "...",
+        born: oldest?.metadata?.blockTimestamp?.slice(0, 10) || "unknown",
+        firstTx: oldest
+          ? `${oldest.asset || "ETH"} ${fmtValue(oldest.value)} received`
+          : "unknown",
+        txCount: onchain?.txCount ?? config.simTx,
+        balanceEth: Math.round((onchain?.balanceEth || 0) * 10000) / 10000,
+        biggestTx: biggest
+          ? `${biggest.asset || "ETH"} ${fmtValue(biggest.value)} on ${biggest.metadata?.blockTimestamp?.slice(0, 10)}`
+          : "unknown",
+        holdings: (assets || []).map((a) => a.symbol),
+        stage: config.targetStage,
+        archetype: role || "unknown"
+      };
+
+      if (gmxTrades.length) {
+        facts.gmxHunts = gmxTrades.length;
+        facts.gmxVolumeUsd = Math.round(gmxVolume);
+      }
+
+      return facts;
     }
 
     // ── Arbitrum One 主流代币注册表（真实持仓资产环） ──
@@ -1658,6 +1764,9 @@
       const config = createConfig(address, onchain);
       config.assets = assets;
 
+      // AI 生平 + GMX 捕猎记录（异步加载，不阻塞生命体诞生）
+      loadBioStory(address, config, onchain, assets).catch(() => {});
+
       if (app.organism) {
         app.scene.remove(app.organism);
         disposeObject(app.organism);
@@ -2350,6 +2459,19 @@
 
         await tx.wait();
 
+        // 铸造即同步：真实交易数上链，捕猎区解锁喂食
+        const tokenId = ethers.solidityPackedKeccak256(
+          ["address"], [await signer.getAddress()]
+        );
+        try {
+          await (await contract.syncStats(
+            tokenId, Math.min(65535, Math.round(config.simTx))
+          )).wait();
+        } catch {}
+
+        app.nftMinted = true;
+        renderHuntFeed();
+
         showToast("NFT 铸造成功！一钱包一生命体");
         console.log("NFT tx:", tx.hash);
         console.log("NFT 查看:", "https://sepolia.arbiscan.io/nft/" +
@@ -2363,6 +2485,166 @@
 
       btn.disabled = false;
       btn.textContent = "铸造 NFT";
+    }
+
+    // ── AI 生平 + GMX 捕猎进化（Living NFT 前端联动）──
+    const STAGES9 = ["Primordial","Emerged","Awakening","Growing","Thriving","Mature","Intense","Radiant","Ancient"];
+    const CHAINLIFE_WORKER_URL = ""; // 冲刺期 Workers 部署后填写，如 "https://chain-life.xxx.workers.dev"
+
+    async function loadBioStory(address, config, onchain, assets) {
+      const panel = document.getElementById("bioPanel");
+      const token = (app.bioToken = (app.bioToken || 0) + 1);
+      panel.style.opacity = "1";
+      document.getElementById("bioName").textContent = "···";
+      document.getElementById("bioTraits").textContent = "";
+      document.getElementById("bioStory").textContent = "";
+      document.getElementById("bioEpitaph").textContent = "";
+      document.getElementById("bioStatus").textContent = "AI 正在阅读链上记录…";
+
+      const [transfers, gmxTrades] = await Promise.all([
+        fetchTransferHistory(address),
+        fetchGmxTrades(address)
+      ]);
+      if (token !== app.bioToken) return;
+      app.gmxTrades = gmxTrades;
+
+      const profile = generateWalletProfile(config);
+      const facts = buildBioFacts(address, config, onchain, assets, transfers, gmxTrades, profile.role);
+
+      renderHuntFeed();
+      if (!gmxTrades.length && !transfers.length) {
+        document.getElementById("bioStatus").textContent =
+          "该钱包没有可读的转账与交易记录，故事留白。";
+        return;
+      }
+
+      const isLocal = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+      if (!isLocal && !CHAINLIFE_WORKER_URL) {
+        document.getElementById("bioStatus").textContent =
+          "AI 传记服务即将上线（本地开发已可用）";
+        return;
+      }
+
+      const endpoint = isLocal ? "/bio" : CHAINLIFE_WORKER_URL + "/bio";
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address,
+            facts,
+            lang: document.documentElement.lang === "zh-CN" ? "zh" : "en"
+          })
+        });
+        if (!res.ok) throw new Error("bio http " + res.status);
+        const bio = (await res.json()).bio;
+        if (!bio || token !== app.bioToken) return;
+
+        document.getElementById("bioName").textContent =
+          bio.name || "The Nameless One";
+        document.getElementById("bioTraits").textContent =
+          (bio.traits || []).map((t) => "· " + t).join("  ");
+        document.getElementById("bioEpitaph").textContent =
+          bio.epitaph ? "「" + bio.epitaph + "」" : "";
+        document.getElementById("bioStatus").textContent =
+          "由链上事实生成 · AI";
+
+        // 类型机逐字输出生平
+        const storyEl = document.getElementById("bioStory");
+        storyEl.textContent = "";
+        const story = (bio.story || "").replace(/\n+/g, "\n");
+        for (const ch of story) {
+          if (token !== app.bioToken) return;
+          storyEl.textContent += ch;
+          await new Promise((r) => setTimeout(r, ch === "\n" ? 60 : 9));
+        }
+      } catch (e) {
+        if (token === app.bioToken) {
+          document.getElementById("bioStatus").textContent =
+            "传记生成失败，稍后重试";
+        }
+      }
+    }
+
+    // 捕猎喂食区：GMX 交易 → feed() 进化（需已铸造 NFT）
+    function renderHuntFeed() {
+      const box = document.getElementById("bioHunts");
+      if (!box) return;
+      box.textContent = "";
+      const trades = (app.gmxTrades || []).slice(0, 3);
+      if (!trades.length) {
+        box.style.display = "none";
+        return;
+      }
+      box.style.display = "block";
+
+      const title = document.createElement("div");
+      title.textContent = "GMX HUNTS · 捕猎记录";
+      title.style.cssText =
+        "color:rgba(255,255,255,.25);font-size:8px;letter-spacing:.15em;margin-bottom:6px;";
+      box.appendChild(title);
+
+      trades.forEach((t) => {
+        const row = document.createElement("div");
+        row.style.cssText =
+          "display:flex;justify-content:space-between;align-items:center;" +
+          "font-size:10px;color:rgba(255,255,255,.6);margin-bottom:5px;";
+        const info = document.createElement("span");
+        info.textContent =
+          (t.eventName || "trade").replace("Order", "") +
+          " · $" + Math.round(parseFloat(t.sizeDeltaUsd || 0) / 1e30) +
+          (t.isLong ? " LONG" : " SHORT");
+        const feedBtn = document.createElement("button");
+        feedBtn.textContent = "喂食";
+        feedBtn.style.cssText =
+          "font-size:9px;padding:2px 8px;border-radius:8px;border:1px solid rgba(0,166,255,.4);" +
+          "background:rgba(0,166,255,.1);color:#7fd0ff;cursor:pointer;";
+        feedBtn.onclick = () => feedFromGmxTrade(t.transactionHash);
+        row.appendChild(info);
+        row.appendChild(feedBtn);
+        box.appendChild(row);
+      });
+    }
+
+    async function feedFromGmxTrade(txHash) {
+      const config = app.config;
+      if (!config) { showToast("请先生成生命体"); return; }
+      if (typeof window.ethereum === "undefined") { showToast("请安装 MetaMask"); return; }
+      if (typeof window.ethers === "undefined") { showToast("ethers 未加载，请刷新"); return; }
+
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: CHAINLIFE_NFT.chainId }]
+        });
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const owner = await signer.getAddress();
+        const tokenId = ethers.solidityPackedKeccak256(["address"], [owner]);
+        const contract = new ethers.Contract(CHAINLIFE_NFT.address, CHAINLIFE_NFT.abi, signer);
+
+        // 先同步真实交易数上链，再喂食（进化 = 余额 + 交易数 + XP）
+        try {
+          await (await contract.syncStats(
+            tokenId, Math.min(65535, Math.round(config.simTx))
+          )).wait();
+        } catch {}
+
+        const tx = await contract.feed(tokenId, "gmx-trade", txHash);
+        await tx.wait();
+
+        const p = await contract.lifeParams(tokenId);
+        app.pulseBoost = 1; // bloom 爆发
+        showToast("进化成功！阶段 → " + STAGES9[Number(p.stage)] +
+          " · XP " + p.xp);
+      } catch (e) {
+        const msg = (e.shortMessage || e.message || String(e));
+        showToast(msg.includes("digesting")
+          ? "消化中… 1 小时后再喂"
+          : msg.includes("not minted")
+            ? "先铸造 NFT，再喂食"
+            : "喂食失败: " + msg.slice(0, 50));
+      }
     }
 
     function showError(error) {
