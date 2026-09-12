@@ -106,10 +106,15 @@ http.createServer(async (req, res) => {
       return;
     }
 
+    const html = readHtml(); // 先读文件再写头，避免文件异常时双重写头
     res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(readHtml());
+    res.end(html);
   } catch (e) {
-    res.writeHead(502);
-    res.end(JSON.stringify({ error: e.message }));
+    if (!res.headersSent) {
+      res.writeHead(502);
+      res.end(JSON.stringify({ error: e.message }));
+    } else {
+      res.end();
+    }
   }
 }).listen(PORT, () => console.log('http://127.0.0.1:' + PORT));
