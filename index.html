@@ -43,11 +43,12 @@
       background:
         radial-gradient(
           ellipse at 50% 48%,
-          rgba(75, 92, 180, .16),
+          var(--aura, rgba(75, 92, 180, .16)),
           rgba(19, 24, 53, .08) 32%,
           transparent 70%
         ),
         #05060b;
+      transition: background 1.5s ease;
     }
 
     #app::before {
@@ -56,11 +57,11 @@
       inset: 0;
       z-index: 1;
       pointer-events: none;
-      opacity: .3;
+      opacity: .1;
       background-image:
         linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-      background-size: 52px 52px;
+      background-size: 72px 72px;
       mask-image: radial-gradient(ellipse at center, #000, transparent 72%);
       -webkit-mask-image: radial-gradient(ellipse at center, #000, transparent 72%);
     }
@@ -1097,7 +1098,7 @@
     const VignetteShader = {
       uniforms: {
         tDiffuse: { value: null },
-        darkness: { value: 1.25 },
+        darkness: { value: 0.85 },
         offset: { value: 1.08 }
       },
 
@@ -1209,13 +1210,18 @@
       const color = new THREE.Color();
       color.setHSL(targetHue, saturation, lightness);
 
-      // 光谱辅色：色相 +0.15 旋转，用于壳面虹彩渐变
+      // 光谱辅色：色相 ±0.28 分裂互补旋转（rng 决定方向），层次对比拉满
+      const hue2Dir = rng() < 0.5 ? 1 : -1;
       const color2 = new THREE.Color();
       color2.setHSL(
-        ((targetHue + 0.15 + rng() * 0.06) % 1 + 1) % 1,
-        Math.min(1, saturation * 0.9),
-        lightness * 0.92
+        ((targetHue + hue2Dir * (0.28 + rng() * 0.08)) % 1 + 1) % 1,
+        Math.min(1, saturation * 0.95),
+        lightness * 0.9
       );
+
+      // 高温白核色：同色相、低饱和、高亮，给核心与粒子亮点
+      const colorHot = new THREE.Color();
+      colorHot.setHSL(targetHue, saturation * 0.25, Math.min(1, lightness + 0.28));
 
       const vitality = real
         ? Math.min(99, 55 +
@@ -1274,7 +1280,7 @@
 
       return {
         seed,
-        color, color2, targetStage, targetHue, stageName, simTx, energy,
+        color, color2, colorHot, targetStage, targetHue, stageName, simTx, energy,
         real, balanceEth, isContract,
         zeroAddress:
           address.toLowerCase() ===
@@ -1365,8 +1371,8 @@
             float edge = pow(1.0 - abs(vNormalWorld.z), 1.5);
             float energy = .55 + vNoise * .35 + edge * .6;
 
-            // 光谱虹彩：主色与辅色随噪声渐变混合
-            vec3 spectral = mix(uColor, uColor2, vNoise * 0.55);
+            // 光谱虹彩：噪声 + 菲涅尔边缘双驱动，边缘出现异色镀膜光晕
+            vec3 spectral = mix(uColor, uColor2, vNoise * 0.55 + edge * 0.45);
             vec3 hdrColor = spectral * energy * 1.15;
 
             gl_FragColor = vec4(hdrColor, .22);
@@ -1444,6 +1450,7 @@
       const sizes = new Float32Array(count);
       const lives = new Float32Array(count);
       const phases = new Float32Array(count);
+      const mixes = new Float32Array(count);
 
       for (let i = 0; i < count; i++) {
         const index = i * 3;
@@ -1460,9 +1467,10 @@
         positions[index + 2] =
           radius * Math.cos(phi);
 
-        sizes[i] = .55 + rng() * 1.2;
+        sizes[i] = .3 + Math.pow(rng(), 2.2) * 2.4;
         lives[i] = rng();
         phases[i] = rng();
+        mixes[i] = rng() < 0.55 ? 0.0 : 1.0; // 主色/辅色两族粒子
       }
 
       const geometry = new THREE.BufferGeometry();
@@ -1487,10 +1495,17 @@
         new THREE.BufferAttribute(phases, 1)
       );
 
+      geometry.setAttribute(
+        "aColorMix",
+        new THREE.BufferAttribute(mixes, 1)
+      );
+
       const material = new THREE.ShaderMaterial({
         uniforms: {
           uTime: { value: 0 },
           uColor: { value: config.color },
+          uColor2: { value: config.color2 },
+          uColorHot: { value: config.colorHot },
           uPixelRatio: {
             value: Math.min(window.devicePixelRatio, 1.5)
           }
@@ -1500,11 +1515,13 @@
           attribute float aSize;
           attribute float aLife;
           attribute float aPhase;
+          attribute float aColorMix;
 
           uniform float uTime;
           uniform float uPixelRatio;
 
           varying float vLife;
+          varying float vColorMix;
 
           void main() {
             float life =
@@ -1538,6 +1555,7 @@
               fadeIn * fadeOut;
 
             vLife = fadeIn * fadeOut;
+            vColorMix = aColorMix;
 
             gl_Position =
               projectionMatrix * mvPosition;
@@ -1546,15 +1564,19 @@
 
         fragmentShader: `
           uniform vec3 uColor;
+          uniform vec3 uColor2;
+          uniform vec3 uColorHot;
 
           varying float vLife;
+          varying float vColorMix;
 
           void main() {
             vec2 uv = gl_PointCoord - .5;
             float distanceToCenter = length(uv);
 
+            // 幂律衰减：边缘更柔、核心更锐，去除棉球感
             float soft =
-              1.0 - smoothstep(.08, .5, distanceToCenter);
+              pow(1.0 - smoothstep(.08, .5, distanceToCenter), 2.2);
 
             float core =
               1.0 - smoothstep(0.0, .18, distanceToCenter);
@@ -1562,8 +1584,10 @@
             float alpha =
               (soft * .72 + core * .68) * vLife;
 
+            // 主色/辅色两族 + 核心高温漂白
+            vec3 base = mix(uColor, uColor2, vColorMix);
             vec3 hdrColor =
-              uColor * (1.05 + core * 1.9);
+              mix(base, uColorHot, core * .85) * (1.05 + core * 1.9);
 
             gl_FragColor =
               vec4(hdrColor, alpha);
@@ -1640,7 +1664,8 @@
       const material = new THREE.ShaderMaterial({
         uniforms: {
           uTime: { value: 0 },
-          uColor: { value: config.color }
+          uColor: { value: config.color },
+          uColor2: { value: config.color2 }
         },
 
         vertexShader: `
@@ -1650,6 +1675,7 @@
           uniform float uTime;
 
           varying float vAlpha;
+          varying float vSide;
 
           void main() {
             float life =
@@ -1664,6 +1690,7 @@
 
             vAlpha =
               fade * (.2 + aSide * .18);
+            vSide = aSide;
 
             gl_Position =
               projectionMatrix * viewPosition;
@@ -1672,11 +1699,15 @@
 
         fragmentShader: `
           uniform vec3 uColor;
+          uniform vec3 uColor2;
           varying float vAlpha;
+          varying float vSide;
 
           void main() {
+            // 尾迹头部主色、尾部混辅色并渐隐：一条线两个色
+            vec3 col = mix(uColor, uColor2, vSide * .55);
             gl_FragColor =
-              vec4(uColor * 1.2, vAlpha);
+              vec4(col * 1.2, vAlpha);
           }
         `,
 
@@ -1816,6 +1847,12 @@
       app.morphRings = morphRings;
       app.config = config;
       app.address = address;
+
+      // 背景环境光跟随生命体颜色（--aura CSS 变量，带 1.5s 过渡）
+      document.getElementById("app").style.setProperty(
+        "--aura",
+        `rgba(${Math.round(config.color.r * 255)},${Math.round(config.color.g * 255)},${Math.round(config.color.b * 255)},.16)`
+      );
 
       // ── Smooth birth: scale + particle fade-in ──
       // 初始冷白 → 目标色
@@ -2002,9 +2039,10 @@
         .16
       );
 
-      bloomPass.threshold = .32;
-      bloomPass.strength = 0.8;
-      bloomPass.radius = .55;
+      // 高阈值 + 大半径：只让核与高亮粒子泛光，光晕更柔更有层次
+      bloomPass.threshold = .5;
+      bloomPass.strength = 0.85;
+      bloomPass.radius = .7;
 
       // ── macOS Chrome (Metal/ANGLE) 半浮点渲染目标有随机黑块伪影 ──
       // 把 bloom 内部目标与 composer 目标全部强制为 8 位，规避驱动 bug
@@ -2050,9 +2088,13 @@
             vec3 c = texture2D(tDiffuse, vUv).rgb;
 
             float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-            c = mix(vec3(l), c, 1.15);
-            c = c * c * (3.0 - 2.0 * c) * 0.7 + c * 0.3;
+            c = mix(vec3(l), c, 1.25);
+            c = c * c * (3.0 - 2.0 * c) * 0.8 + c * 0.2;
             c = c + (1.0 - c) * c * 0.05;
+
+            // hash 抖动：8 位管线去色带（banding），暗部不再有脏颗粒环
+            float n = fract(sin(dot(vUv * 913.0, vec2(12.9898, 78.233))) * 43758.5453);
+            c += (n - 0.5) / 255.0;
 
             gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
           }
@@ -2816,7 +2858,9 @@
         pos[i*3] = r * Math.sin(ph) * Math.cos(th);
         pos[i*3+1] = r * Math.sin(ph) * Math.sin(th);
         pos[i*3+2] = r * Math.cos(ph);
-        const c = new THREE.Color().setHSL(0.55 + Math.random() * 0.15, 0.3, 0.3 + Math.random() * 0.4);
+        const c = Math.random() < 0.15
+          ? new THREE.Color().setHSL(0.08 + Math.random() * 0.06, 0.5, 0.5 + Math.random() * 0.3)
+          : new THREE.Color().setHSL(0.55 + Math.random() * 0.15, 0.3, 0.3 + Math.random() * 0.4);
         col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
       }
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
