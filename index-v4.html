@@ -1,0 +1,3525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#05060b" />
+  <title>链上生命 · On-Chain Life</title>
+
+  <style>
+    :root {
+      --bg: #05060b;
+      --panel: rgba(12, 15, 25, .68);
+      --line: rgba(255, 255, 255, .13);
+      --text: rgba(255, 255, 255, .92);
+      --soft: rgba(255, 255, 255, .56);
+      --muted: rgba(255, 255, 255, .32);
+      --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      color: var(--text);
+      background: var(--bg);
+      font-family: var(--font);
+    }
+
+    body {
+      user-select: none;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(
+          ellipse at 50% 48%,
+          var(--aura, rgba(75, 92, 180, .16)),
+          rgba(19, 24, 53, .08) 32%,
+          transparent 70%
+        ),
+        #05060b;
+      transition: background 1.5s ease;
+    }
+
+    #app::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: .1;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 72px 72px;
+      mask-image: radial-gradient(ellipse at center, #000, transparent 72%);
+      -webkit-mask-image: radial-gradient(ellipse at center, #000, transparent 72%);
+    }
+
+    #canvas-wrap {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .ui {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .glass {
+      border: 1px solid var(--line);
+      background: linear-gradient(
+        135deg,
+        rgba(255,255,255,.075),
+        rgba(255,255,255,.025)
+      );
+      box-shadow:
+        0 24px 80px rgba(0,0,0,.3),
+        inset 0 1px rgba(255,255,255,.08);
+      backdrop-filter: blur(26px) saturate(135%);
+      -webkit-backdrop-filter: blur(26px) saturate(135%);
+    }
+
+    .history-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .history-chip {
+      padding: 3px 10px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.55);
+      font-family: monospace;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all .25s ease;
+    }
+
+    .history-chip:hover {
+      border-color: rgba(255,255,255,.35);
+      color: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.1);
+    }
+
+    .small-button.mint {
+      color: #8be8a0;
+      border-color: rgba(139,232,160,.35);
+      background: rgba(139,232,160,.08);
+    }
+
+    .small-button.mint:hover {
+      background: rgba(139,232,160,.16);
+      box-shadow: 0 0 14px rgba(139,232,160,.25);
+    }
+
+    .stats, .analysis {
+      transition: box-shadow .5s ease;
+    }
+
+    .stats:hover, .analysis:hover {
+      box-shadow:
+        0 24px 80px rgba(0,0,0,.3),
+        inset 0 1px rgba(255,255,255,.12),
+        0 0 28px rgba(120,160,255,.08);
+    }
+
+    .panel {
+      position: absolute;
+      top: 26px;
+      left: 50%;
+      width: min(650px, calc(100vw - 30px));
+      padding: 20px;
+      border-radius: 25px;
+      transform: translateX(-50%);
+      pointer-events: auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .33em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 9px 0 0;
+      font-size: 27px;
+      font-weight: 300;
+      letter-spacing: -.08em;
+      line-height: 1;
+    }
+
+    .address-preview {
+      max-width: 190px;
+      overflow: hidden;
+      color: var(--soft);
+      font-family: monospace;
+      font-size: 10px;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .address-label {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 8px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    input {
+      min-width: 0;
+      flex: 1;
+      height: 49px;
+      padding: 0 15px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 15px;
+      outline: none;
+      color: rgba(255,255,255,.86);
+      background: rgba(0,0,0,.2);
+      font-family: monospace;
+      font-size: 11px;
+      transition: .25s ease;
+    }
+
+    input::placeholder {
+      color: rgba(255,255,255,.25);
+    }
+
+    input:focus {
+      border-color: rgba(145,165,255,.7);
+      background: rgba(35,42,75,.35);
+      box-shadow: 0 0 0 4px rgba(130,150,255,.08);
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+
+    .generate {
+      height: 49px;
+      padding: 0 20px;
+      border-radius: 15px;
+      color: #080910;
+      background: #f4f6ff;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: .2s ease;
+    }
+
+    .generate:hover {
+      background: #fff;
+      box-shadow: 0 0 28px rgba(175,190,255,.22);
+    }
+
+    .generate:active {
+      transform: scale(.97);
+    }
+
+    .footer-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .status-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #9daeff;
+      box-shadow: 0 0 14px #9daeff;
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: .4; }
+      50% { opacity: 1; }
+    }
+
+    .actions {
+      display: flex;
+      gap: 15px;
+    }
+
+    .small-button {
+      padding: 0;
+      color: rgba(255,255,255,.46);
+      background: transparent;
+      font-size: 10px;
+    }
+
+    .small-button:hover {
+      color: white;
+    }
+
+    .stats {
+      position: absolute;
+      left: 26px;
+      bottom: 26px;
+      width: 250px;
+      padding: 17px;
+      border-radius: 20px;
+      pointer-events: auto;
+    }
+
+    .stats-title {
+      margin-bottom: 15px;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+    }
+
+    .vitality-block {
+      margin-bottom: 12px;
+    }
+
+    .vitality-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .vitality-bar {
+      height: 6px;
+      margin-top: 6px;
+      background: rgba(255,255,255,.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .vitality-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg,
+        #5bc0eb, #7ddb8c, #ffd166, #ff8c42, #ff4dd8);
+      transition: width 1.2s ease;
+    }
+
+    .stage-track {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 0 2px;
+    }
+
+    .stage-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.12);
+      transition: all .4s ease;
+    }
+
+    .stage-dot.passed {
+      background: rgba(255,255,255,.38);
+    }
+
+    .stage-dot.on {
+      background: #fff;
+      box-shadow: 0 0 8px rgba(255,255,255,.9);
+      transform: scale(1.4);
+    }
+
+    .tag-pill {
+      display: inline-block;
+      margin: 0 4px 4px 0;
+      padding: 2px 8px;
+      border: 1px solid;
+      border-radius: 999px;
+      font-size: 9px;
+      letter-spacing: .02em;
+    }
+
+    .badge-source {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.5);
+      font-size: 8px;
+      letter-spacing: .08em;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .stat-label {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      color: rgba(255,255,255,.86);
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    .hint {
+      position: absolute;
+      right: 26px;
+      bottom: 28px;
+      color: rgba(255,255,255,.28);
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .loading {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 25px;
+      color: rgba(255,255,255,.6);
+      background: #05060b;
+      font-size: 10px;
+      letter-spacing: .28em;
+      text-align: center;
+      transition: opacity .6s ease;
+    }
+
+    .loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .error-box {
+      max-width: 560px;
+      padding: 24px;
+      border: 1px solid rgba(255,100,120,.35);
+      border-radius: 18px;
+      color: rgba(255,255,255,.7);
+      background: rgba(75,15,28,.28);
+      font-family: monospace;
+      font-size: 11px;
+      letter-spacing: .02em;
+      line-height: 1.8;
+      text-align: left;
+    }
+
+    .error-title {
+      margin-bottom: 10px;
+      color: #ff9da9;
+      font-family: var(--font);
+      font-size: 13px;
+      letter-spacing: .1em;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      z-index: 80;
+      padding: 10px 15px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: rgba(255,255,255,.75);
+      background: rgba(20,24,38,.8);
+      font-size: 10px;
+      opacity: 0;
+      transform: translate(-50%, 12px);
+      transition: .25s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 650px) {
+      .panel {
+        top: 14px;
+        width: calc(100vw - 24px);
+        padding: 16px;
+        border-radius: 21px;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+
+      .address-preview {
+        max-width: 120px;
+      }
+
+      .input-row {
+        flex-direction: column;
+      }
+
+      input,
+      .generate {
+        width: 100%;
+      }
+
+      .stats {
+        left: 14px;
+        bottom: 14px;
+        width: 215px;
+        padding: 14px;
+      }
+
+      .hint {
+        right: 14px;
+        bottom: 18px;
+        font-size: 8px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .hint {
+        display: none;
+      }
+
+      .stats {
+        width: 190px;
+      }
+
+      .stat-value {
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="app">
+    <div id="canvas-wrap"></div>
+
+    <div id="loading" class="loading">
+      INITIALIZING DIGITAL ORGANISM
+    </div>
+
+    <div class="ui">
+      <section class="glass panel">
+        <div class="header">
+          <div>
+            <div class="eyebrow">ON-CHAIN LIFE / ARBITRUM ONE</div>
+            <h1>链上生命</h1>
+          </div>
+
+          <div class="address-preview">
+            <div class="address-label">ADDRESS SIGNATURE</div>
+            <span id="addressPreview">0x742d...8f44e</span>
+          </div>
+        </div>
+
+        <div class="input-row">
+          <input
+            id="addressInput"
+            autocomplete="off"
+            spellcheck="false"
+            value="0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+            placeholder="输入任意 EVM 地址"
+          />
+
+          <button id="generateButton" class="generate">
+            生成生命体
+          </button>
+        </div>
+
+        <div id="historyStrip" class="history-strip" style="display:none;"></div>
+
+        <div class="footer-line">
+          <div class="status">
+            <span class="status-dot"></span>
+            <span id="statusText">LIFEFORM ACTIVE</span>
+          </div>
+
+          <div class="actions">
+            <button id="connectButton" class="small-button">
+              连接钱包
+            </button>
+
+            <button id="mintButton" class="small-button mint">
+              铸造 NFT
+            </button>
+
+            <button id="randomButton" class="small-button">
+              随机生命体
+            </button>
+
+            <button id="copyButton" class="small-button">
+              复制地址
+            </button>
+
+            <button id="shareButton" class="small-button">
+              分享卡片
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass stats">
+        <div class="stats-title">LIFE SIGNATURE</div>
+
+        <div class="vitality-block">
+          <div class="vitality-head">
+            <span class="stat-label">Vitality</span>
+            <span id="vitality" class="stat-value">--</span>
+          </div>
+          <div class="vitality-bar">
+            <div id="vitalityBar" class="vitality-fill"></div>
+          </div>
+        </div>
+
+        <div class="stage-track" id="stageTrack"></div>
+
+        <div class="stats-grid">
+          <div>
+            <div class="stat-label">Pulse</div>
+            <div id="pulse" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Stage</div>
+            <div id="particleCount" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Balance</div>
+            <div id="balance" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Chain</div>
+            <div id="chainLabel" class="stat-value">ARB ONE</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="hint">
+
+      <section class="glass analysis" id="analysisPanel" style="position:absolute;right:26px;bottom:26px;width:230px;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
+        <div style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:12px;">Wallet Profile</div>
+        <div id="walletRole" style="font-size:14px;margin-bottom:8px;">—</div>
+        <div id="walletTags" style="font-size:10px;line-height:1.6;">—</div>
+        <div id="ageLabel" style="color:rgba(255,255,255,.3);font-size:9px;margin-top:4px;">—</div>
+        <div id="assetList" style="margin-top:8px;"></div>
+        <div id="sourceBadge" class="badge-source" style="display:none;margin-top:8px;"></div>
+      </section>
+
+      <section class="glass bio" id="bioPanel" style="position:absolute;left:26px;bottom:26px;width:300px;max-height:52vh;overflow-y:auto;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
+        <div style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:10px;">Life Story · AI 生平</div>
+        <div id="bioName" style="font-size:15px;margin-bottom:6px;">—</div>
+        <div id="bioTraits" style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:10px;">—</div>
+        <div id="bioStory" style="font-size:11px;line-height:1.7;color:rgba(255,255,255,.85);min-height:34px;"></div>
+        <div id="bioEpitaph" style="font-size:10px;font-style:italic;color:rgba(255,255,255,.35);margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;"></div>
+        <div id="bioStatus" style="font-size:9px;color:rgba(255,255,255,.25);margin-top:8px;"></div>
+        <div id="bioHunts" style="margin-top:10px;"></div>
+      </section>
+
+        DRAG TO ROTATE · SCROLL TO ZOOM
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+  <script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+    import * as THREE from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+    import { EffectComposer } from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js";
+
+    import { RenderPass } from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js";
+
+    import { ShaderPass } from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/ShaderPass.js";
+
+    import { UnrealBloomPass } from
+      "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js";
+
+    const DEFAULT_ADDRESS =
+      "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+
+    const app = {
+      scene: null,
+      camera: null,
+      renderer: null,
+      composer: null,
+      organism: null,
+      shell: null,
+      core: null,
+      particles: null,
+      trails: null,
+      config: null,
+      clock: new THREE.Clock(),
+      targetX: 0,
+      targetY: 0,
+      currentX: 0,
+      currentY: 0,
+      targetZoom: 5.4,
+      currentZoom: 5.4,
+      dragging: false,
+      lastX: 0,
+      lastY: 0,
+      pulseBoost: 0,
+      birthScale: 1,
+      downX: 0,
+      downY: 0
+    };
+
+    window.app = app; // 调试/自动化入口
+
+    function hashString(value) {
+      let h1 = 0x811c9dc5;
+      let h2 = 0x01000193;
+
+      for (let i = 0; i < value.length; i++) {
+        const c = value.charCodeAt(i);
+
+        h1 ^= c;
+        h1 = Math.imul(h1, 16777619);
+
+        h2 ^= c + i * 19;
+        h2 = Math.imul(h2, 2246822519);
+      }
+
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+      h2 = Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+
+      return (h1 ^ h2) >>> 0;
+    }
+
+    function createRandom(seed) {
+      let value = seed >>> 0;
+
+      return function () {
+        value += 0x6D2B79F5;
+
+        let t = value;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function validAddress(address) {
+      return /^0x[a-fA-F0-9]{40}$/.test(address);
+    }
+
+    function shortAddress(address) {
+      return address.slice(0, 6) + "..." + address.slice(-4);
+    }
+
+    // 随机生命体素材池：Arbitrum One 上真实存在的有趣地址
+    // （余额/交易数实测于 2026-08-15，从 0 tx 空地址到 160 万 tx 巨鲸，颜色跨度完整）
+    const CURATED_ADDRESSES = [
+      "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", // 活跃小鲸 · 17 tx · 1.19 ETH
+      "0xF977814e90dA44bFA03b6295A0616a897441aceC", // Binance 热钱包 · 681 tx · ~10,070 ETH
+      "0x0D0707963952f2fBA59dD06f2b425ace40b492Fe", // Gate 热钱包 · 163万 tx · ~2,769 ETH
+      "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH 合约 · 持有 ~139,000 ETH
+      "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", // WBTC 合约 · 冷合约
+      "0xE592427A0AEce92De3Edee1F18E0157C05861564", // Uniswap SwapRouter 合约
+      "0x0000000000000000000000000000000000000000", // 零地址 · 万物坟墓 · ~26 ETH 焚烧归集
+    ];
+
+    function randomAddress() {
+      return CURATED_ADDRESSES[
+        Math.floor(Math.random() * CURATED_ADDRESSES.length)
+      ];
+    }
+
+    // ── 真实链上数据：四层回退读取 Arbitrum One ──
+    // 1) Alchemy（赞助商 RPC，免费层，浏览器直连可用）
+    // 2) 直连官方 RPC（支持 CORS）
+    // 3) 本地 /rpc 代理（server.js）
+    // 4) 全部失败 → 模拟模式
+    const DIRECT_RPC_URL = "https://arb1.arbitrum.io/rpc";
+    const ALCHEMY_KEY = "alch_9iKrEXhhAmZ97F0hKHH9G";
+    const ALCHEMY_URL = "https://arb-mainnet.g.alchemy.com/v2/" + ALCHEMY_KEY;
+
+    async function rpcRequest(url, method, params) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
+      });
+
+      if (!res.ok) throw new Error("rpc http " + res.status);
+
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error.message || "rpc error");
+
+      return data.result;
+    }
+
+    async function rpc(method, params) {
+      try {
+        return await rpcRequest(ALCHEMY_URL, method, params);
+      } catch (alchemyErr) {
+        try {
+          return await rpcRequest(DIRECT_RPC_URL, method, params);
+        } catch (directErr) {
+          try {
+            return await rpcRequest("/rpc", method, params);
+          } catch (proxyErr) {
+            throw new Error("rpc unreachable");
+          }
+        }
+      }
+    }
+
+    // ── Alchemy 交易历史（AI 生平数据源）──
+    async function fetchTransferHistory(address) {
+      try {
+        const data = await rpcRequest(ALCHEMY_URL, "alchemy_getAssetTransfers", [{
+          fromBlock: "0x0",
+          toBlock: "latest",
+          order: "desc",
+          maxCount: "0x10",
+          withMetadata: true,
+          excludeZeroValue: true,
+          category: ["external"],
+          toAddress: address
+        }]);
+        return data.transfers || [];
+      } catch {
+        return [];
+      }
+    }
+
+    // ── GMX 捕猎记录（官方 squid 索引，免 key）──
+    const GMX_SQUID_URL = "https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/graphql";
+
+    async function fetchGmxTrades(address) {
+      // squid 的 account_eq 大小写敏感，必须用校验和地址（ethers.getAddress）
+      let checksummed = address;
+      try { checksummed = ethers.getAddress(address); } catch {}
+      const q = JSON.stringify({
+        query: `{ tradeActions(limit: 20, where: { account_eq: "${checksummed}" }, orderBy: timestamp_DESC) { id timestamp eventName sizeDeltaUsd isLong executionPrice transactionHash } }`
+      });
+      const tryUrl = async (url) => {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: q
+        });
+        if (!r.ok) throw new Error("gmx http " + r.status);
+        const d = await r.json();
+        return d.data?.tradeActions || [];
+      };
+      try {
+        return await tryUrl(GMX_SQUID_URL);
+      } catch {
+        try {
+          return await tryUrl("/gmx");
+        } catch {
+          return [];
+        }
+      }
+    }
+
+    // 结构化事实 → AI 生平 prompt（只给事实，不给结论）
+    function buildBioFacts(address, config, onchain, assets, transfers, gmxTrades, role) {
+      const fmtValue = (v) => {
+        const n = parseFloat(v);
+        if (!isFinite(n)) return v;
+        return n >= 1000 ? (n / 1000).toFixed(2) + "k" : n.toFixed(4);
+      };
+      const biggest = transfers.length
+        ? transfers.reduce((a, b) =>
+            parseFloat(b.value || 0) > parseFloat(a.value || 0) ? b : a)
+        : null;
+      const oldest = transfers.length ? transfers[transfers.length - 1] : null;
+      const gmxVolume = gmxTrades.reduce(
+        (s, t) => s + parseFloat(t.sizeDeltaUsd || 0) / 1e30, 0);
+
+      const facts = {
+        address: address.slice(0, 10) + "...",
+        born: oldest?.metadata?.blockTimestamp?.slice(0, 10) || "unknown",
+        firstTx: oldest
+          ? `${oldest.asset || "ETH"} ${fmtValue(oldest.value)} received`
+          : "unknown",
+        txCount: onchain?.txCount ?? config.simTx,
+        balanceEth: Math.round((onchain?.balanceEth || 0) * 10000) / 10000,
+        biggestTx: biggest
+          ? `${biggest.asset || "ETH"} ${fmtValue(biggest.value)} on ${biggest.metadata?.blockTimestamp?.slice(0, 10)}`
+          : "unknown",
+        holdings: (assets || []).map((a) => a.symbol),
+        stage: config.targetStage,
+        archetype: role || "unknown"
+      };
+
+      if (gmxTrades.length) {
+        facts.gmxHunts = gmxTrades.length;
+        facts.gmxVolumeUsd = Math.round(gmxVolume);
+      }
+
+      return facts;
+    }
+
+    // ── Arbitrum One 主流代币注册表（真实持仓资产环） ──
+    const ARBITRUM_TOKENS = [
+      { symbol: "USDC", address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", decimals: 6,  color: 0x2775CA },
+      { symbol: "USDT", address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", decimals: 6,  color: 0x26A17B },
+      { symbol: "WETH", address: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", decimals: 18, color: 0x627EEA },
+      { symbol: "ARB",  address: "0x912CE59144191C1204E64559FE8253a0e49E6548", decimals: 18, color: 0x28A0F0 },
+      { symbol: "WBTC", address: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", decimals: 8,  color: 0xF7931A },
+      { symbol: "DAI",  address: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1", decimals: 18, color: 0xF5AC37 },
+      { symbol: "LINK", address: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", decimals: 18, color: 0x2A5ADA },
+      { symbol: "UNI",  address: "0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0", decimals: 18, color: 0xFF007A },
+      { symbol: "GMX",  address: "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a", decimals: 18, color: 0x00A6FF },
+      { symbol: "AAVE", address: "0xba5DdD1f9d7F570dc94a51479a000E3BCE967196", decimals: 18, color: 0xB6509E },
+      { symbol: "LDO",  address: "0x13Ad51ed4F1B7e9Dc168d8a00cB3f4dDD85EfA60", decimals: 18, color: 0x00A3FF },
+      { symbol: "GRT",  address: "0x9623063377AD1B27544C965cCd7342f7EA7e88C7", decimals: 18, color: 0x6747ED }
+    ];
+
+    // 批量查询代币余额（eth_call balanceOf），按持仓量降序
+    async function fetchTokenBalances(address) {
+      const calldata =
+        "0x70a08231" + address.slice(2).padStart(64, "0");
+
+      const results = await Promise.all(
+        ARBITRUM_TOKENS.map(async (token) => {
+          try {
+            const hex = await rpc("eth_call", [
+              { to: token.address, data: calldata }, "latest"
+            ]);
+            const amount =
+              Number(BigInt(hex)) / Math.pow(10, token.decimals);
+            return { ...token, amount };
+          } catch {
+            return { ...token, amount: 0 };
+          }
+        })
+      );
+
+      return results
+        .filter((t) => t.amount > 0)
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 6);
+    }
+
+    async function fetchOnchainData(address) {
+      const work = (async () => {
+        const [balanceWei, txCount, code, blockNumber] =
+          await Promise.all([
+            rpc("eth_getBalance", [address, "latest"]),
+            rpc("eth_getTransactionCount", [address, "latest"]),
+            rpc("eth_getCode", [address, "latest"]),
+            rpc("eth_blockNumber", [])
+          ]);
+
+        return {
+          balanceEth: parseInt(balanceWei, 16) / 1e18,
+          txCount: parseInt(txCount, 16),
+          isContract: code && code !== "0x",
+          blockNumber: parseInt(blockNumber, 16),
+          network: "Arbitrum One"
+        };
+      })();
+
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("rpc timeout")), 8000)
+      );
+
+      return Promise.race([work, timeout]);
+    }
+
+    const simplex = `
+      vec3 mod289(vec3 x) {
+        return x - floor(x * (1.0 / 289.0)) * 289.0;
+      }
+
+      vec4 mod289(vec4 x) {
+        return x - floor(x * (1.0 / 289.0)) * 289.0;
+      }
+
+      vec4 permute(vec4 x) {
+        return mod289(((x * 34.0) + 1.0) * x);
+      }
+
+      vec4 taylorInvSqrt(vec4 r) {
+        return 1.79284291400159 - 0.85373472095314 * r;
+      }
+
+      float snoise(vec3 v) {
+        const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+        const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+        vec3 i = floor(v + dot(v, C.yyy));
+        vec3 x0 = v - i + dot(i, C.xxx);
+
+        vec3 g = step(x0.yzx, x0.xyz);
+        vec3 l = 1.0 - g;
+
+        vec3 i1 = min(g.xyz, l.zxy);
+        vec3 i2 = max(g.xyz, l.zxy);
+
+        vec3 x1 = x0 - i1 + C.xxx;
+        vec3 x2 = x0 - i2 + C.yyy;
+        vec3 x3 = x0 - D.yyy;
+
+        i = mod289(i);
+
+        vec4 p = permute(
+          permute(
+            permute(i.z + vec4(0.0, i1.z, i2.z, 1.0))
+            + i.y + vec4(0.0, i1.y, i2.y, 1.0)
+          )
+          + i.x + vec4(0.0, i1.x, i2.x, 1.0)
+        );
+
+        float n_ = 0.142857142857;
+        vec3 ns = n_ * D.wyz - D.xzx;
+
+        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+
+        vec4 x_ = floor(j * ns.z);
+        vec4 y_ = floor(j - 7.0 * x_);
+
+        vec4 x = x_ * ns.x + ns.yyyy;
+        vec4 y = y_ * ns.x + ns.yyyy;
+        vec4 h = 1.0 - abs(x) - abs(y);
+
+        vec4 b0 = vec4(x.xy, y.xy);
+        vec4 b1 = vec4(x.zw, y.zw);
+
+        vec4 s0 = floor(b0) * 2.0 + 1.0;
+        vec4 s1 = floor(b1) * 2.0 + 1.0;
+
+        vec4 sh = -step(h, vec4(0.0));
+
+        vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+        vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+        vec3 p0 = vec3(a0.xy, h.x);
+        vec3 p1 = vec3(a0.zw, h.y);
+        vec3 p2 = vec3(a1.xy, h.z);
+        vec3 p3 = vec3(a1.zw, h.w);
+
+        vec4 norm = taylorInvSqrt(vec4(
+          dot(p0, p0),
+          dot(p1, p1),
+          dot(p2, p2),
+          dot(p3, p3)
+        ));
+
+        p0 *= norm.x;
+        p1 *= norm.y;
+        p2 *= norm.z;
+        p3 *= norm.w;
+
+        vec4 m = max(0.6 - vec4(
+          dot(x0, x0),
+          dot(x1, x1),
+          dot(x2, x2),
+          dot(x3, x3)
+        ), 0.0);
+
+        m *= m;
+
+        return 42.0 * dot(
+          m * m,
+          vec4(
+            dot(p0, x0),
+            dot(p1, x1),
+            dot(p2, x2),
+            dot(p3, x3)
+          )
+        );
+      }
+    `;
+
+    const VignetteShader = {
+      uniforms: {
+        tDiffuse: { value: null },
+        darkness: { value: 0.85 },
+        offset: { value: 1.08 }
+      },
+
+      vertexShader: `
+        varying vec2 vUv;
+
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float darkness;
+        uniform float offset;
+
+        varying vec2 vUv;
+
+        void main() {
+          vec4 color = texture2D(tDiffuse, vUv);
+
+          vec2 uv = (vUv - .5) * offset;
+          float vignette = smoothstep(.1, .82, dot(uv, uv));
+
+          color.rgb *= mix(
+            1.0,
+            1.0 - darkness * .42,
+            vignette
+          );
+
+          gl_FragColor = color;
+        }
+      `
+    };
+
+    function createConfig(address, onchain) {
+      const seed = hashString(address.toLowerCase());
+      const rng = createRandom(seed);
+
+      // ── 9阶段生命周期 ──
+      const LIFECYCLE = [
+        { name:'Primordial', minTx:0,    hue:0.60 },
+        { name:'Emerged',    minTx:10,   hue:0.55 },
+        { name:'Awakening',  minTx:50,   hue:0.48 },
+        { name:'Growing',    minTx:150,  hue:0.40 },
+        { name:'Thriving',   minTx:400,  hue:0.25 },
+        { name:'Mature',     minTx:1000, hue:0.14 },
+        { name:'Intense',    minTx:2500, hue:0.07 },
+        { name:'Radiant',    minTx:5000, hue:0.02 },
+        { name:'Ancient',    minTx:8000, hue:0.95 },
+      ];
+
+      // 链上能量驱动生命阶段：余额加权(财富即岁月) + EOA 真实交易数。
+      // RPC 不可用时回退到哈希模拟。
+      let simTx = 1 + Math.floor(rng() * 15000);
+      let energy = simTx;
+      let balanceEth = null;
+      let isContract = false;
+      let real = false;
+
+      if (onchain) {
+        real = true;
+        balanceEth = onchain.balanceEth;
+        isContract = onchain.isContract;
+        const balanceBoost =
+          Math.min(8000, Math.round((balanceEth || 0) * 400));
+        // 合约地址的 nonce 只统计合约创建数，不纳入能量
+        const txPart = isContract ? 0 : onchain.txCount;
+        energy = balanceBoost + txPart;
+        simTx = isContract ? 0 : onchain.txCount;
+      }
+
+      let targetStage = 0;
+      for (let i = 8; i >= 0; i--) { if (energy >= LIFECYCLE[i].minTx) { targetStage = i; break; } }
+      const stageName = LIFECYCLE[targetStage].name;
+
+      // ── 生命信号光谱：log(能量) 连续映射全色环 ──
+      // 蓝(0.62) → 青(0.50) → 绿(0.30) → 黄(0.15) → 橙红(0.05) → 品红(0.95)
+      const eLog = Math.log10(1 + energy);
+      const SPECTRUM_ANCHORS = [
+        [0.0, 0.62], [1.5, 0.50], [3.0, 0.30],
+        [4.0, 0.15], [5.0, 0.05], [6.2, 0.95]
+      ];
+      let spectrumHue = 0.62;
+      for (let i = 0; i < SPECTRUM_ANCHORS.length - 1; i++) {
+        const [x0, h0] = SPECTRUM_ANCHORS[i];
+        const [x1, h1] = SPECTRUM_ANCHORS[i + 1];
+        if (eLog >= x0 && eLog <= x1) {
+          spectrumHue = h0 + ((eLog - x0) / (x1 - x0)) * (h1 - h0);
+          break;
+        }
+        if (eLog > x1) spectrumHue = h1;
+      }
+
+      // 身份色相偏移 ±0.06：同能量级的钱包也各有光谱位置
+      const hueJitter = (rng() - 0.5) * 0.12;
+      const targetHue = ((spectrumHue + hueJitter) % 1 + 1) % 1;
+
+      // ── LDR 色彩预算（8 位管线）：高饱和 + 高亮度 ──
+      // 红/品红系在深蓝底上容易浑浊，专项提亮加饱和
+      let lightness = 0.62 + rng() * 0.06;
+      let saturation = 0.85;
+      if (targetHue < 0.08 || targetHue > 0.9) {
+        lightness += 0.06;
+        saturation = Math.min(1, saturation + 0.08);
+      }
+
+      const color = new THREE.Color();
+      color.setHSL(targetHue, saturation, lightness);
+
+      // 光谱辅色：色相 ±0.28 分裂互补旋转（rng 决定方向），层次对比拉满
+      const hue2Dir = rng() < 0.5 ? 1 : -1;
+      const color2 = new THREE.Color();
+      color2.setHSL(
+        ((targetHue + hue2Dir * (0.28 + rng() * 0.08)) % 1 + 1) % 1,
+        Math.min(1, saturation * 0.95),
+        lightness * 0.9
+      );
+
+      // 高温白核色：同色相、低饱和、高亮，给核心与粒子亮点
+      const colorHot = new THREE.Color();
+      colorHot.setHSL(targetHue, saturation * 0.25, Math.min(1, lightness + 0.28));
+
+      const vitality = real
+        ? Math.min(99, 55 +
+            Math.round(Math.log10(1 + (balanceEth || 0)) * 6 +
+              (simTx > 0 ? 8 : 0) + (isContract ? 10 : 0)))
+        : 62 + Math.floor(rng() * 38);
+
+      // ── 形态分化：按 能量层级 × 身份 决定物种特征 ──
+      let radius = 1.55 + rng() * .2;
+      let rotation = .03 + rng() * .05;
+      let particleCount = 900 + Math.floor(rng() * 700);
+      let trailCount = 220 + Math.floor(rng() * 130);
+      let distortion = .08 + rng() * .16;
+      let pulse = 1.2 + rng() * 1.3;
+      let ringCount = 0;
+      let cage = false;
+
+      if (isContract) {
+        // 合约：晶体几何化 + 线框笼
+        distortion *= 1.6;
+        rotation *= .8;
+        cage = true;
+        ringCount = 1;
+      }
+
+      if (energy >= 8000 || (balanceEth || 0) >= 1000) {
+        // 泰坦：更大、更慢、三层光环
+        radius += .3;
+        rotation *= .45;
+        trailCount = Math.floor(trailCount * 1.3);
+        particleCount = Math.floor(particleCount * 1.1);
+        ringCount = Math.max(ringCount, 3);
+      } else if (energy >= 2000) {
+        radius += .18;
+        rotation *= .6;
+        ringCount = Math.max(ringCount, 2);
+      } else if (energy >= 500) {
+        rotation *= 1.15;
+        particleCount = Math.floor(particleCount * 1.25);
+        ringCount = Math.max(ringCount, 1);
+      } else if (energy < 50) {
+        // 沉睡/空白：更小、更慢、更稀疏
+        radius -= .1;
+        rotation *= .5;
+        pulse *= .7;
+        particleCount = Math.floor(particleCount * .6);
+        trailCount = Math.floor(trailCount * .7);
+      }
+
+      const blackHole =
+        address.toLowerCase() ===
+        "0x0000000000000000000000000000000000000000";
+
+      if (blackHole) {
+        // 万物坟墓：极慢、三层暗环
+        rotation *= .3;
+        ringCount = 3;
+      }
+
+      // ── 吸积盘参数：阶段越高盘越宽越亮（借鉴 GARGANTUA 黑洞吸积盘）──
+      const stageT = targetStage / 8;
+      const disk = {
+        inner: radius + 0.55,
+        outer: radius + 0.55 + 1.3 + stageT * 2.6,
+        rotSpeed: (0.55 + rng() * 0.45) * (energy < 50 ? 0.5 : 1),
+        bright: blackHole ? 1.1 : 0.30 + stageT * 0.45,
+        opacity: blackHole ? 1.0 : 0.55 + stageT * 0.45
+      };
+
+      // ── 引力透镜强度：普通生命体轻微扭曲空间，黑洞全功率 ──
+      const lensStrength = blackHole
+        ? 1.0
+        : Math.min(0.12, 0.03 + stageT * 0.09);
+
+      return {
+        seed,
+        color, color2, colorHot, targetStage, targetHue, stageName, simTx, energy,
+        real, balanceEth, isContract,
+        zeroAddress: blackHole,
+        blackHole,
+        disk,
+        lensStrength,
+        radius,
+        noiseScale: 1.3 + rng() * 1.4,
+        distortion,
+        pulse,
+        rotation,
+        particleCount,
+        trailCount,
+        spread: 1.9 + rng() * .35,
+        ringCount,
+        cage,
+        vitality
+      };
+    }
+
+    function createShellMaterial(config) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uScale: { value: config.noiseScale },
+          uDistortion: { value: config.distortion },
+          uPulse: { value: config.pulse },
+          uColor: { value: config.color },
+          uColor2: { value: config.color2 }
+        },
+
+        vertexShader: `
+          uniform float uTime;
+          uniform float uScale;
+          uniform float uDistortion;
+          uniform float uPulse;
+
+          varying float vNoise;
+          varying vec3 vNormalWorld;
+
+          ${simplex}
+
+          void main() {
+            vec3 direction = normalize(position);
+
+            float n1 = snoise(
+              direction * uScale +
+              vec3(uTime * .12, uTime * .15, uTime * .1)
+            );
+
+            float n2 = snoise(
+              direction * uScale * 2.3 -
+              vec3(uTime * .18, uTime * .12, uTime * .2)
+            );
+
+            float breathe =
+              1.0 +
+              sin(uTime * uPulse) * .04 +
+              sin(uTime * uPulse * .43) * .015;
+
+            float displacement =
+              n1 * uDistortion +
+              n2 * uDistortion * .22;
+
+            vec3 transformed =
+              position * breathe +
+              direction * displacement;
+
+            vec4 worldPosition =
+              modelMatrix * vec4(transformed, 1.0);
+
+            vNoise = n1 * .5 + .5;
+            vNormalWorld = normalize(mat3(modelMatrix) * normal);
+
+            gl_Position =
+              projectionMatrix *
+              viewMatrix *
+              worldPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform vec3 uColor2;
+
+          varying float vNoise;
+          varying vec3 vNormalWorld;
+
+          void main() {
+            float edge = pow(1.0 - abs(vNormalWorld.z), 1.5);
+            float energy = .55 + vNoise * .35 + edge * .6;
+
+            // 光谱虹彩：噪声 + 菲涅尔边缘双驱动，边缘出现异色镀膜光晕
+            vec3 spectral = mix(uColor, uColor2, vNoise * 0.55 + edge * 0.45);
+            vec3 hdrColor = spectral * energy * 1.15;
+
+            gl_FragColor = vec4(hdrColor, .22);
+          }
+        `,
+
+        wireframe: true,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+    }
+
+    function createCoreMaterial(config) {
+      return new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uPulse: { value: config.pulse },
+          uColor: { value: config.color }
+        },
+
+        vertexShader: `
+          uniform float uTime;
+          uniform float uPulse;
+
+          varying vec3 vNormalView;
+
+          void main() {
+            float breath =
+              1.0 +
+              sin(uTime * uPulse) * .025 +
+              sin(uTime * uPulse * .5) * .012;
+
+            vec3 transformed = position * breath;
+
+            vec4 viewPosition =
+              modelViewMatrix * vec4(transformed, 1.0);
+
+            vNormalView = normalize(normalMatrix * normal);
+
+            gl_Position =
+              projectionMatrix * viewPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 uColor;
+
+          varying vec3 vNormalView;
+
+          void main() {
+            float fresnel =
+              pow(1.0 - abs(vNormalView.z), 2.1);
+
+            float energy = .25 + fresnel * 1.1;
+            vec3 hdrColor = uColor * energy * 1.15;
+
+            gl_FragColor =
+              vec4(hdrColor, .14 + fresnel * .24);
+          }
+        `,
+
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending
+      });
+    }
+
+    function createParticles(config) {
+      // v4：主角换成吸积盘，粒子数量减半，只做氛围尘埃
+      const count = Math.floor(config.particleCount * 0.5);
+      const rng = createRandom(config.seed ^ 0x9e3779b9);
+
+      const positions = new Float32Array(count * 3);
+      const sizes = new Float32Array(count);
+      const lives = new Float32Array(count);
+      const phases = new Float32Array(count);
+      const mixes = new Float32Array(count);
+
+      for (let i = 0; i < count; i++) {
+        const index = i * 3;
+        const theta = rng() * Math.PI * 2;
+        const phi = Math.acos(2 * rng() - 1);
+        // v4：粒子降级为盘外漂流尘埃，分布更宽更稀
+        const radius = config.spread * 1.5 + (rng() - .5) * 1.6;
+
+        positions[index] =
+          radius * Math.sin(phi) * Math.cos(theta);
+
+        positions[index + 1] =
+          radius * Math.sin(phi) * Math.sin(theta);
+
+        positions[index + 2] =
+          radius * Math.cos(phi);
+
+        sizes[i] = .2 + Math.pow(rng(), 2.4) * 1.8;
+        lives[i] = rng();
+        phases[i] = rng();
+        mixes[i] = rng() < 0.55 ? 0.0 : 1.0; // 主色/辅色两族粒子
+      }
+
+      const geometry = new THREE.BufferGeometry();
+
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions, 3)
+      );
+
+      geometry.setAttribute(
+        "aSize",
+        new THREE.BufferAttribute(sizes, 1)
+      );
+
+      geometry.setAttribute(
+        "aLife",
+        new THREE.BufferAttribute(lives, 1)
+      );
+
+      geometry.setAttribute(
+        "aPhase",
+        new THREE.BufferAttribute(phases, 1)
+      );
+
+      geometry.setAttribute(
+        "aColorMix",
+        new THREE.BufferAttribute(mixes, 1)
+      );
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uColor: { value: config.color },
+          uColor2: { value: config.color2 },
+          uColorHot: { value: config.colorHot },
+          uPixelRatio: {
+            value: Math.min(window.devicePixelRatio, 1.5)
+          }
+        },
+
+        vertexShader: `
+          attribute float aSize;
+          attribute float aLife;
+          attribute float aPhase;
+          attribute float aColorMix;
+
+          uniform float uTime;
+          uniform float uPixelRatio;
+
+          varying float vLife;
+          varying float vColorMix;
+
+          void main() {
+            float life =
+              fract(aLife + uTime * (.045 + aPhase * .025));
+
+            float fadeIn = smoothstep(0.0, .14, life);
+            float fadeOut = 1.0 - smoothstep(.67, 1.0, life);
+
+            vec3 transformed = position;
+
+            float angle =
+              uTime * (.12 + aPhase * .18);
+
+            float c = cos(angle);
+            float s = sin(angle);
+
+            transformed.xz =
+              mat2(c, -s, s, c) * transformed.xz;
+
+            transformed += normalize(transformed) *
+              sin(uTime * 1.4 + aPhase * 18.0) * .04;
+
+            vec4 mvPosition =
+              modelViewMatrix * vec4(transformed, 1.0);
+
+            float depth =
+              1.0 / max(.1, -mvPosition.z);
+
+            gl_PointSize =
+              aSize * uPixelRatio * depth * 34.0 *
+              fadeIn * fadeOut;
+
+            vLife = fadeIn * fadeOut;
+            vColorMix = aColorMix;
+
+            gl_Position =
+              projectionMatrix * mvPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform vec3 uColor2;
+          uniform vec3 uColorHot;
+
+          varying float vLife;
+          varying float vColorMix;
+
+          void main() {
+            vec2 uv = gl_PointCoord - .5;
+            float distanceToCenter = length(uv);
+
+            // 幂律衰减：边缘更柔、核心更锐，去除棉球感
+            float soft =
+              pow(1.0 - smoothstep(.08, .5, distanceToCenter), 2.2);
+
+            float core =
+              1.0 - smoothstep(0.0, .18, distanceToCenter);
+
+            float alpha =
+              (soft * .72 + core * .68) * vLife;
+
+            // 主色/辅色两族 + 核心高温漂白
+            vec3 base = mix(uColor, uColor2, vColorMix);
+            vec3 hdrColor =
+              mix(base, uColorHot, core * .85) * (1.05 + core * 1.9);
+
+            gl_FragColor =
+              vec4(hdrColor, alpha);
+          }
+        `,
+
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+
+      const points =
+        new THREE.Points(geometry, material);
+
+      points.renderOrder = 5;
+
+      return points;
+    }
+
+    function createTrails(config) {
+      const count = config.trailCount;
+      const rng = createRandom(config.seed ^ 0x85ebca6b);
+
+      const positions = new Float32Array(count * 2 * 3);
+      const lives = new Float32Array(count * 2);
+      const sides = new Float32Array(count * 2);
+
+      for (let i = 0; i < count; i++) {
+        const theta = rng() * Math.PI * 2;
+        const phi = Math.acos(2 * rng() - 1);
+
+        const x = Math.sin(phi) * Math.cos(theta);
+        const y = Math.sin(phi) * Math.sin(theta);
+        const z = Math.cos(phi);
+
+        const r1 = config.spread + .08 + rng() * .2;
+        const r2 = r1 + .15 + rng() * .42;
+
+        const index = i * 6;
+
+        positions[index] = x * r1;
+        positions[index + 1] = y * r1;
+        positions[index + 2] = z * r1;
+
+        positions[index + 3] = x * r2;
+        positions[index + 4] = y * r2;
+        positions[index + 5] = z * r2;
+
+        const life = rng();
+
+        lives[i * 2] = life;
+        lives[i * 2 + 1] = life;
+        sides[i * 2] = 0;
+        sides[i * 2 + 1] = 1;
+      }
+
+      const geometry = new THREE.BufferGeometry();
+
+      geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(positions, 3)
+      );
+
+      geometry.setAttribute(
+        "aLife",
+        new THREE.BufferAttribute(lives, 1)
+      );
+
+      geometry.setAttribute(
+        "aSide",
+        new THREE.BufferAttribute(sides, 1)
+      );
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uColor: { value: config.color },
+          uColor2: { value: config.color2 }
+        },
+
+        vertexShader: `
+          attribute float aLife;
+          attribute float aSide;
+
+          uniform float uTime;
+
+          varying float vAlpha;
+          varying float vSide;
+
+          void main() {
+            float life =
+              fract(aLife + uTime * .043);
+
+            float fade =
+              smoothstep(0.0, .16, life) *
+              (1.0 - smoothstep(.66, 1.0, life));
+
+            vec4 viewPosition =
+              modelViewMatrix * vec4(position, 1.0);
+
+            vAlpha =
+              fade * (.2 + aSide * .18);
+            vSide = aSide;
+
+            gl_Position =
+              projectionMatrix * viewPosition;
+          }
+        `,
+
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform vec3 uColor2;
+          varying float vAlpha;
+          varying float vSide;
+
+          void main() {
+            // 尾迹头部主色、尾部混辅色并渐隐：一条线两个色
+            vec3 col = mix(uColor, uColor2, vSide * .55);
+            gl_FragColor =
+              vec4(col * 1.2, vAlpha);
+          }
+        `,
+
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+
+      const lines =
+        new THREE.LineSegments(geometry, material);
+
+      lines.renderOrder = 4;
+
+      return lines;
+    }
+
+    // ── 吸积盘 v4：开普勒差速 + 湍流条纹 + 多普勒聚束 ──
+    // 配方借鉴 GARGANTUA 黑洞渲染器：噪声坐标跟随开普勒角速度旋转，
+    // fbm 被剪切成切向流动条纹；ISCO 内缘亮环锚定视觉重心；
+    // 多普勒因子让朝观察者一侧更亮更热，画面产生方向性生命力。
+    function createAccretionDisk(config) {
+      const geo = new THREE.RingGeometry(
+        config.disk.inner, config.disk.outer, 180, 1
+      );
+      geo.rotateX(-Math.PI / 2); // 躺平到 XZ 平面
+
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uColor: { value: config.color },
+          uColor2: { value: config.color2 },
+          uColorHot: { value: config.colorHot },
+          uInner: { value: config.disk.inner },
+          uOuter: { value: config.disk.outer },
+          uBright: { value: config.disk.bright },
+          uRotSpeed: { value: config.disk.rotSpeed },
+          uOpacity: { value: 0 } // 诞生动画淡入
+        },
+
+        vertexShader: `
+          varying vec3 vLocal;
+          varying vec3 vWorld;
+
+          void main() {
+            vLocal = position;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorld = wp.xyz;
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `,
+
+        fragmentShader: `
+          uniform float uTime;
+          uniform vec3 uColor;
+          uniform vec3 uColor2;
+          uniform vec3 uColorHot;
+          uniform float uInner;
+          uniform float uOuter;
+          uniform float uBright;
+          uniform float uRotSpeed;
+          uniform float uOpacity;
+
+          varying vec3 vLocal;
+          varying vec3 vWorld;
+
+          float hash13(vec3 p) {
+            p = fract(p * 0.1031);
+            p += dot(p, p.zyx + 31.32);
+            return fract((p.x + p.y) * p.z);
+          }
+
+          float vnoise(vec3 p) {
+            vec3 i = floor(p);
+            vec3 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float n000 = hash13(i);
+            float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+            float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+            float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+            float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+            float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+            float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+            float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+            return mix(
+              mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+              mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
+              f.z);
+          }
+
+          float fbm(vec3 p) {
+            float a = 0.5;
+            float s = 0.0;
+            for (int k = 0; k < 5; k++) {
+              s += a * vnoise(p);
+              p = p * 2.03 + 11.3;
+              a *= 0.5;
+            }
+            return s;
+          }
+
+          // Novikov-Thorne 风格径向流量（ISCO = 3 归一化单位）
+          float ntFlux(float R) {
+            float x = max(R, 3.001);
+            return pow(x / 3.0, -3.0) * (1.0 - sqrt(3.0 / x));
+          }
+
+          // 热量配色：暗主色 → 主色 → 高温白核 → 近白（保留更多体色）
+          vec3 heat(float t) {
+            vec3 c = mix(uColor * 0.3, uColor, smoothstep(0.0, 0.55, t));
+            c = mix(c, uColorHot, smoothstep(0.5, 1.05, t));
+            c = mix(c, vec3(1.0), smoothstep(1.1, 1.9, t) * 0.38);
+            return c;
+          }
+
+          void main() {
+            float qr = length(vLocal.xz);
+            // 归一化到 ISCO=3 的物理单位，直接复用黑洞渲染参数
+            float R = qr / uInner * 3.0;
+            float Rout = uOuter / uInner * 3.0;
+
+            vec2 n2 = vLocal.xz / qr;
+
+            // 开普勒差速旋转：内快外慢，噪声随动 → 剪切流动感
+            float omega = uRotSpeed * 1.15 * pow(3.0 / R, 1.5);
+            float ph = omega * uTime;
+            float cs = cos(ph);
+            float sn = sin(ph);
+            vec2 rn = vec2(
+              n2.x * cs - n2.y * sn,
+              n2.x * sn + n2.y * cs
+            );
+
+            float det = 1.0 - smoothstep(4.0, 18.0, R);
+            float warp = fbm(vec3(rn * 1.5, 3.0));
+            float rad = R * 0.55;
+            float turb =
+              fbm(vec3(rn * 2.3 + (warp - 0.5) * 1.4 * det, rad * 0.4));
+            turb = 0.55 + 0.45 * smoothstep(0.22, 0.88, turb);
+            float arcA =
+              fbm(vec3(rn * 3.1 + (warp - 0.5) * 2.2 * det, rad * 3.4 + 5.0));
+            float arcB =
+              fbm(vec3(rn * 22.0 + (warp - 0.5) * 3.0 * det, rad * 6.0 + 9.0));
+            float streak = mix(arcA, arcA * 0.55 + arcB * 0.80, det);
+            streak = 0.42 + 0.58 * smoothstep(0.20, 0.86, streak);
+            float lane = fbm(vec3(rn * 5.2 + 7.3, rad * 1.15 + 2.0));
+            float laneMask = 0.58 + 0.42 * smoothstep(0.30, 0.82, lane);
+            float pat = turb * streak * laneMask;
+
+            float flux = ntFlux(R);
+            float temp = pow(flux * 10.0, 0.25);
+            float fade = 1.0 - smoothstep(Rout - 1.6, Rout, R);
+            float innerFade = smoothstep(3.0, 3.4, R); // ISCO 内挖空
+            // 压平径向衰减 + 亮度地板：整盘可见，不只内缘一条线
+            float I = (pow(flux, 0.6) * 6.0 + 0.55) * pat;
+            I += exp(-pow((R - 3.1) * 3.0, 2.0)) * 1.5; // 内缘灼热亮环
+            I *= fade * innerFade;
+            I = min(I, 2.5); // 封顶防过曝，纹理不被烧白
+
+            // 多普勒聚束：朝观察者一侧更亮更热，远离侧偏辅色
+            float angW = atan(vWorld.z, vWorld.x);
+            vec3 tdir = normalize(vec3(-sin(angW), 0.0, cos(angW)));
+            vec3 rayDir = normalize(vWorld - cameraPosition);
+            float beta = sqrt(0.5 / R) * 1.15;
+            float gamma = 1.0 / sqrt(max(1.0 - beta * beta, 1e-4));
+            float D = 1.0 / (gamma * (1.0 - dot(tdir * beta, rayDir)));
+            D = clamp(D, 0.6, 1.6); // 收窄聚束范围，亮侧不烧白
+
+            vec3 base = heat(temp * (0.55 + 0.45 * D));
+            base = mix(base, uColor2, clamp(1.0 - D, 0.0, 1.0) * 0.45);
+            vec3 col = base * I * (0.65 + 0.35 * D * D);
+
+            float a = clamp(I * 0.55, 0.0, 1.0) * uOpacity;
+            gl_FragColor = vec4(col * uBright, a);
+          }
+        `,
+
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending
+      });
+
+      const disk = new THREE.Mesh(geo, material);
+      disk.renderOrder = 3;
+      // 明显倾斜，让盘面纹理可见（太平行于视线会糊成一条线）
+      disk.rotation.x = 0.52 + (config.seed % 100) / 100 * 0.3;
+      disk.rotation.z = (config.seed % 77) / 77 * 0.3 - 0.15;
+
+      return disk;
+    }
+
+    // ── 形态光环：泰坦/巨鲸的多层环 ──
+    function createMorphRings(count, radiusBase, config) {
+      const group = new THREE.Group();
+
+      for (let i = 0; i < count; i++) {
+        const torus = new THREE.Mesh(
+          new THREE.TorusGeometry(radiusBase + i * 0.24, 0.009, 8, 90),
+          new THREE.MeshBasicMaterial({
+            color: config.color,
+            transparent: true,
+            opacity: 0.15 + (count - i) * 0.04,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+          })
+        );
+
+        torus.rotation.x = Math.PI / 2 + i * 0.4;
+        torus.rotation.y = i * 0.7;
+        torus.userData.rx = (i % 2 ? 1 : -1) * (0.0008 + i * 0.0005);
+        torus.userData.ry = 0.0006 + i * 0.0004;
+        group.add(torus);
+      }
+
+      return group;
+    }
+
+    // ── 合约晶体笼 ──
+    function createCage(config) {
+      return new THREE.Mesh(
+        new THREE.IcosahedronGeometry(config.radius * 1.28, 1),
+        new THREE.MeshBasicMaterial({
+          color: config.color,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.22
+        })
+      );
+    }
+
+    function disposeObject(object) {
+      if (!object) return;
+
+      object.traverse((child) => {
+        if (child.geometry) {
+          child.geometry.dispose();
+        }
+
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m) => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+    }
+
+    async function createOrganism(address) {
+      let onchain = null;
+
+      try {
+        onchain = await fetchOnchainData(address);
+      } catch (error) {
+        console.warn("链上数据获取失败，回退到模拟模式:", error);
+      }
+
+      // 资产环独立查询：失败不影响主体
+      let assets = [];
+      try {
+        assets = await fetchTokenBalances(address);
+      } catch (error) {
+        console.warn("资产查询失败:", error);
+      }
+
+      const config = createConfig(address, onchain);
+      config.assets = assets;
+
+      // AI 生平 + GMX 捕猎记录（异步加载，不阻塞生命体诞生）
+      loadBioStory(address, config, onchain, assets).catch(() => {});
+
+      if (app.organism) {
+        app.scene.remove(app.organism);
+        disposeObject(app.organism);
+      }
+
+      const group = new THREE.Group();
+
+      const shell = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(config.radius, 4),
+        createShellMaterial(config)
+      );
+
+      const core = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(config.radius * .87, 4),
+        createCoreMaterial(config)
+      );
+
+      const trails = createTrails(config);
+      const particles = createParticles(config);
+      const morphRings = createMorphRings(
+        config.ringCount, config.radius + 0.35, config
+      );
+      const disk = createAccretionDisk(config);
+
+      group.add(core);
+      group.add(trails);
+      group.add(shell);
+      group.add(particles);
+      group.add(disk);
+      group.add(morphRings);
+
+      if (config.cage) group.add(createCage(config));
+
+      // ── 黑洞模式（零地址 · 万物坟墓）：核心坍缩为事件视界 ──
+      if (config.blackHole) {
+        core.material.dispose();
+        core.material = new THREE.MeshBasicMaterial({
+          color: 0x000000
+        }); // 不透明纯黑，遮挡后方的盘
+        shell.material.opacity = 0.05;
+      }
+
+      app.scene.add(group);
+
+      // 固定渲染顺序，避免透明物体每帧按距离重排导致视觉抖动
+      core.renderOrder = -1;
+      shell.renderOrder = 0;
+
+      app.organism = group;
+      app.shell = shell;
+      app.core = core;
+      app.trails = trails;
+      app.particles = particles;
+      app.disk = disk;
+      app.morphRings = morphRings;
+      app.config = config;
+      app.address = address;
+
+      // 透镜扭曲强度跟随生命体（黑洞全功率 + 事件视界阴影）
+      if (app.lensPass) {
+        app.lensPass.uniforms.uStrength.value = config.lensStrength;
+        app.lensPass.uniforms.uShadow.value = config.blackHole ? 1 : 0;
+        app.lensPass.uniforms.uRing.value = config.blackHole ? 1 : 0;
+      }
+
+      // 背景环境光跟随生命体颜色（--aura CSS 变量，带 1.5s 过渡）
+      document.getElementById("app").style.setProperty(
+        "--aura",
+        `rgba(${Math.round(config.color.r * 255)},${Math.round(config.color.g * 255)},${Math.round(config.color.b * 255)},.16)`
+      );
+
+      // 银河背景色调跟随生命体（同族色系）
+      if (app.sky) {
+        app.sky.material.uniforms.uTint.value
+          .copy(config.color)
+          .lerp(new THREE.Color(0.3, 0.36, 0.7), 0.4);
+      }
+
+      // ── Smooth birth: scale + particle fade-in ──
+      // 初始冷白 → 目标色
+      app.birthHue = 0.60;
+      app.birthColor = new THREE.Color().setHSL(0.60, 0.3, 0.85);
+      app.targetHue = config.targetHue;
+      app.targetColor = config.color.clone();
+      app.stageName = config.stageName;
+      app.targetStage = config.targetStage;
+      app.organism.scale.setScalar(0.5);
+      if (app.particles) { app.particles.material.opacity = 0; app.particles.material.uniforms.uColor.value.copy(app.birthColor); }
+      if (app.trails) { app.trails.material.opacity = 0; app.trails.material.uniforms.uColor.value.copy(app.birthColor); }
+      if (app.shell) { app.shell.material.opacity = 0; app.shell.material.uniforms.uColor.value.copy(app.birthColor); }
+      if (app.core && app.core.material.uniforms) app.core.material.uniforms.uColor.value.copy(app.birthColor);
+      // 吸积盘诞生：冷白 → 目标色，透明度从 0 淡入
+      if (app.disk) {
+        app.disk.material.uniforms.uOpacity.value = 0;
+        app.disk.material.uniforms.uColor.value.copy(app.birthColor);
+        app.disk.material.uniforms.uColor2.value.copy(app.birthColor);
+        app.disk.material.uniforms.uColorHot.value.copy(app.birthColor);
+      }
+      app.evolutionStart = performance.now() / 1000;
+
+      updateStats(address, config, onchain);
+    }
+
+    function updateStats(address, config, onchain) {
+      document.getElementById("addressPreview").textContent =
+        shortAddress(address);
+
+      document.getElementById("vitality").textContent =
+        config.vitality + "% vitality";
+
+      document.getElementById("pulse").textContent =
+        config.pulse.toFixed(2) + " Hz";
+
+      document.getElementById("particleCount").textContent =
+        (config.stageName || '—') + ' · ' +
+        (config.isContract
+          ? '合约'
+          : config.simTx.toLocaleString() + ' tx');
+
+      const bar = document.getElementById("vitalityBar");
+      if (bar) bar.style.width = config.vitality + "%";
+
+      renderStageDots(config.targetStage);
+
+      const balanceEl = document.getElementById("balance");
+      if (balanceEl) {
+        balanceEl.textContent = config.real
+          ? "Ξ " + config.balanceEth.toFixed(4)
+          : "— 模拟";
+      }
+
+      const status = document.getElementById("statusText");
+      if (status) {
+        status.textContent = config.real
+          ? "LIFEFORM ACTIVE · ARBITRUM ONE"
+          : "LIFEFORM ACTIVE · SIMULATED";
+      }
+
+      // Wallet profile panel
+      const profile = generateWalletProfile(config);
+      const ap = document.getElementById('analysisPanel');
+      if (ap) {
+        ap.style.opacity = '1';
+
+        const roleEl = document.getElementById('walletRole');
+        roleEl.textContent = profile.icon + ' ' + profile.role;
+        roleEl.style.color = profile.accent;
+        roleEl.style.textShadow = '0 0 12px ' + profile.accent + '66';
+
+        const tagsEl = document.getElementById('walletTags');
+        tagsEl.textContent = '';
+        profile.tags.forEach((t) => {
+          const pill = document.createElement('span');
+          pill.className = 'tag-pill';
+          pill.textContent = t;
+          pill.style.borderColor = profile.accent + '55';
+          pill.style.color = profile.accent;
+          pill.style.background = profile.accent + '14';
+          tagsEl.appendChild(pill);
+        });
+
+        document.getElementById('ageLabel').textContent =
+          profile.age +
+          (config.isContract
+            ? ' · 合约 · 真实余额'
+            : ' · ' + profile.tx.toLocaleString() + ' tx · ' +
+              (config.real ? '真实链上数据' : '模拟数据'));
+
+        // 真实持仓列表（资产环）
+        const assetEl = document.getElementById('assetList');
+        if (assetEl) {
+          assetEl.textContent = '';
+          const assets = config.assets || [];
+          if (assets.length) {
+            const title = document.createElement('div');
+            title.textContent = 'HOLDINGS · 资产环';
+            title.style.cssText =
+              'color:rgba(255,255,255,.25);font-size:8px;' +
+              'letter-spacing:.15em;margin-bottom:5px;';
+            assetEl.appendChild(title);
+
+            assets.forEach((a) => {
+              const row = document.createElement('div');
+              row.style.cssText =
+                'display:flex;justify-content:space-between;' +
+                'align-items:center;font-size:9px;margin-bottom:3px;' +
+                'font-family:monospace;';
+              const sym = document.createElement('span');
+              sym.textContent = a.symbol;
+              sym.style.color =
+                '#' + a.color.toString(16).padStart(6, '0');
+              const amt = document.createElement('span');
+              amt.textContent = a.amount.toLocaleString(
+                undefined, { maximumFractionDigits: 4 }
+              );
+              amt.style.color = 'rgba(255,255,255,.55)';
+              row.appendChild(sym);
+              row.appendChild(amt);
+              assetEl.appendChild(row);
+            });
+          }
+        }
+
+        const badge = document.getElementById('sourceBadge');
+        if (badge) {
+          badge.style.display = 'inline-block';
+          badge.textContent = config.real
+            ? (config.isContract
+              ? 'ARBITRUM · CONTRACT'
+              : 'ARBITRUM · LIVE')
+            : 'SIMULATED';
+        }
+      }
+    }
+
+    function initThree() {
+      app.scene = new THREE.Scene();
+
+      app.camera = new THREE.PerspectiveCamera(
+        46,
+        window.innerWidth / window.innerHeight,
+        .1,
+        100
+      );
+
+      app.camera.position.set(0, 0, app.currentZoom);
+
+      app.renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: "high-performance"
+      });
+
+      // 上限 1.5 倍像素比：视网膜屏上比 2.0 少 ~44% 像素，bloom 后处理更流畅
+      app.renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, 1.5)
+      );
+
+      app.renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+      );
+
+      app.renderer.setClearColor(0x05060b, 1); app.renderer.setClearAlpha(1);
+
+      app.renderer.outputColorSpace =
+        THREE.SRGBColorSpace;
+
+      app.renderer.toneMapping =
+        THREE.ACESFilmicToneMapping;
+
+      app.renderer.toneMappingExposure = 0.85;
+
+      document.getElementById("canvas-wrap")
+        .appendChild(app.renderer.domElement);
+
+      const renderPass = new RenderPass(
+        app.scene,
+        app.camera
+      );
+
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(
+          window.innerWidth,
+          window.innerHeight
+        ),
+        0.8,
+        0.55,
+        .16
+      );
+
+      // 高阈值 + 大半径：只让核与高亮粒子泛光，光晕更柔更有层次
+      bloomPass.threshold = .5;
+      bloomPass.strength = 0.85;
+      bloomPass.radius = .7;
+
+      // ── macOS Chrome (Metal/ANGLE) 半浮点渲染目标有随机黑块伪影 ──
+      // 把 bloom 内部目标与 composer 目标全部强制为 8 位，规避驱动 bug
+      [
+        bloomPass.renderTargetBright,
+        ...bloomPass.renderTargetsHorizontal,
+        ...bloomPass.renderTargetsVertical
+      ].forEach((rt) => {
+        if (rt) {
+          rt.type = THREE.UnsignedByteType;
+          if (rt.texture) rt.texture.type = THREE.UnsignedByteType;
+        }
+      });
+
+      const composerTarget = new THREE.WebGLRenderTarget(
+        1, 1,
+        { type: THREE.UnsignedByteType }
+      );
+
+      const vignettePass =
+        new ShaderPass(VignetteShader);
+
+      // ── 引力透镜扭曲 v4：光线向生命体弯曲，背景被推成爱因斯坦环 ──
+      // 屏幕空间伪透镜（非测地线步进，性能友好）；黑洞模式全功率 + 视界阴影 + 光子环
+      const lensPass = new ShaderPass({
+        uniforms: {
+          tDiffuse: { value: null },
+          uCenter: { value: new THREE.Vector2(0.5, 0.5) },
+          uAspect: { value: window.innerWidth / window.innerHeight },
+          uStrength: { value: 0.0 },
+          uShadow: { value: 0.0 },
+          uRing: { value: 0.0 },
+          uTime: { value: 0.0 }
+        },
+
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+
+        fragmentShader: `
+          uniform sampler2D tDiffuse;
+          uniform vec2 uCenter;
+          uniform float uAspect;
+          uniform float uStrength;
+          uniform float uShadow;
+          uniform float uRing;
+
+          varying vec2 vUv;
+
+          void main() {
+            vec2 d = vUv - uCenter;
+            vec2 da = vec2(d.x * uAspect, d.y);
+            float r = length(da);
+            vec2 dir = da / max(r, 1e-4);
+
+            // 引力弯曲：采样点向中心拉 → 背景视觉上被推离中心
+            float bend = uStrength * 0.018 / (r * r + 0.02);
+            bend = min(bend, 0.05);
+            // 局部化：效果限制在生命体附近，边缘画面不被扭动
+            bend *= 1.0 - smoothstep(0.30, 0.85, r);
+            vec2 uvOff = dir * bend;
+            vec3 col = texture2D(
+              tDiffuse,
+              vUv - vec2(uvOff.x / uAspect, uvOff.y)
+            ).rgb;
+
+            // 黑洞事件视界阴影：中心压黑（遮住 bloom 漏光）
+            if (uShadow > 0.5) {
+              col *= smoothstep(0.10, 0.24, r);
+            }
+
+            // 光子环：视界外缘的细亮环
+            if (uRing > 0.5) {
+              float ring = exp(-pow((r - 0.30) * 38.0, 2.0));
+              col += vec3(1.0, 0.92, 0.80) * ring * 0.30;
+            }
+
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `
+      });
+      app.lensPass = lensPass;
+
+      // ── 色彩分级：径向色差 + 饱和度 + S 曲线 + 动态胶片颗粒 ──
+      // 颗粒随时间跳动（GARGANTUA 配方）：去 8 位色带且不显脏
+      const gradePass = new ShaderPass({
+        uniforms: {
+          tDiffuse: { value: null },
+          uTime: { value: 0 }
+        },
+
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+
+        fragmentShader: `
+          uniform sampler2D tDiffuse;
+          uniform float uTime;
+          varying vec2 vUv;
+
+          void main() {
+            // 径向色差：只在画面边缘 RGB 错位，镜头感
+            vec2 dir = vUv - 0.5;
+            float ca = 0.0035 * dot(dir, dir);
+            vec3 c;
+            c.r = texture2D(tDiffuse, vUv + dir * ca).r;
+            c.g = texture2D(tDiffuse, vUv).g;
+            c.b = texture2D(tDiffuse, vUv - dir * ca).b;
+
+            float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+            c = mix(vec3(l), c, 1.25);
+            c = c * c * (3.0 - 2.0 * c) * 0.8 + c * 0.2;
+            c = c + (1.0 - c) * c * 0.05;
+
+            // 动态胶片颗粒：随时间跳动，暗部加权 → 去色带 + 电影感
+            float n = fract(sin(dot(
+              gl_FragCoord.xy + fract(uTime * 13.7) * 97.0,
+              vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+            c += n * 0.014 * (1.0 - 0.5 * l);
+
+            gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+          }
+        `
+      });
+      app.gradePass = gradePass;
+
+      app.composer =
+        new EffectComposer(app.renderer, composerTarget);
+      app.composer.addPass(renderPass);
+      app.composer.addPass(bloomPass);
+      app.composer.addPass(lensPass);
+      app.composer.addPass(vignettePass);
+      app.composer.addPass(gradePass);
+      app.composer.setSize(
+        window.innerWidth,
+        window.innerHeight
+      );
+
+      // 银河星野背景（替换旧的离散星尘，颜色随生命体）
+      createSkyBackground();
+
+      window.addEventListener("resize", resize);
+      setupControls();
+    }
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      app.camera.aspect = width / height;
+      app.camera.updateProjectionMatrix();
+
+      app.renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, 1.5)
+      );
+      app.renderer.setSize(width, height);
+      app.composer.setSize(width, height);
+
+      if (app.lensPass) {
+        app.lensPass.uniforms.uAspect.value = width / height;
+      }
+
+      if (app.particles) {
+        app.particles.material.uniforms.uPixelRatio.value =
+          Math.min(window.devicePixelRatio, 1.5);
+      }
+    }
+
+    function setupControls() {
+      const canvas = app.renderer.domElement;
+
+      canvas.addEventListener("pointerdown", (event) => {
+        app.dragging = true;
+        app.lastX = event.clientX;
+        app.lastY = event.clientY;
+        app.downX = event.clientX;
+        app.downY = event.clientY;
+        canvas.setPointerCapture(event.pointerId);
+      });
+
+      canvas.addEventListener("pointermove", (event) => {
+        if (!app.dragging) return;
+
+        const dx = event.clientX - app.lastX;
+        const dy = event.clientY - app.lastY;
+
+        app.targetY += dx * .005;
+        app.targetX += dy * .004;
+
+        app.targetX = Math.max(
+          -.7,
+          Math.min(.7, app.targetX)
+        );
+
+        app.lastX = event.clientX;
+        app.lastY = event.clientY;
+      });
+
+      canvas.addEventListener("pointerup", (event) => {
+        // 未拖动视为点击：激发一次呼吸脉冲
+        const dx = event.clientX - app.downX;
+        const dy = event.clientY - app.downY;
+        if (Math.abs(dx) + Math.abs(dy) < 6) {
+          app.pulseBoost = 1;
+        }
+        app.dragging = false;
+      });
+
+      canvas.addEventListener("pointercancel", () => {
+        app.dragging = false;
+      });
+
+      canvas.addEventListener("wheel", (event) => {
+        event.preventDefault();
+
+        app.targetZoom += event.deltaY * .004;
+
+        app.targetZoom = Math.max(
+          3.7,
+          Math.min(8.4, app.targetZoom)
+        );
+      }, { passive: false });
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const time = app.clock.getElapsedTime();
+
+      app.currentX +=
+        (app.targetX - app.currentX) * .055;
+
+      app.currentY +=
+        (app.targetY - app.currentY) * .055;
+
+      app.currentZoom +=
+        (app.targetZoom - app.currentZoom) * .07;
+
+      app.camera.position.z = app.currentZoom;
+
+      if (app.organism) {
+        app.organism.rotation.x =
+          app.currentX + Math.sin(time * .2) * .025;
+
+        app.organism.rotation.y =
+          app.currentY + time * app.config.rotation;
+
+        app.organism.rotation.z =
+          Math.sin(time * .22) * .035;
+
+        app.organism.position.y =
+          Math.sin(time * .72) * .045;
+      }
+
+      if (app.shell) {
+        app.shell.material.uniforms.uTime.value = time;
+      }
+
+      if (app.core && app.core.material.uniforms) {
+        app.core.material.uniforms.uTime.value = time;
+      }
+
+      if (app.particles) {
+        app.particles.material.uniforms.uTime.value = time;
+      }
+
+      if (app.trails) {
+        app.trails.material.uniforms.uTime.value = time;
+      }
+
+      if (app.disk) {
+        app.disk.material.uniforms.uTime.value = time;
+      }
+
+      if (app.sky) {
+        app.sky.material.uniforms.uTime.value = time;
+      }
+
+      // 透镜扭曲：uCenter 跟随生命体屏幕投影，uTime 驱动动态颗粒
+      if (app.lensPass) {
+        app.lensPass.uniforms.uTime.value = time;
+        if (app.organism) {
+          const v = new THREE.Vector3();
+          app.organism.getWorldPosition(v);
+          v.project(app.camera);
+          app.lensPass.uniforms.uCenter.value.set(
+            v.x * 0.5 + 0.5, v.y * 0.5 + 0.5
+          );
+        }
+      }
+
+      if (app.gradePass) {
+        app.gradePass.uniforms.uTime.value = time;
+      }
+
+      // ── Smooth birth: color drift + fade + scale (bloom disabled during animation) ──
+      if (app.evolutionStart && app.organism) {
+        const elapsed = (performance.now() / 1000) - app.evolutionStart;
+        const raw = Math.min(1, elapsed / 5.0);
+        const eased = raw < 0.5 ? 4*raw*raw*raw : 1 - Math.pow(-2*raw+2,3)/2;
+        const done = raw >= 1;
+        const s = done ? 1.0 : (0.5 + eased * 0.5);
+        app.birthScale = s;
+        if (app.particles) { app.particles.material.opacity = done ? 0.5 : eased * 0.5; app.particles.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
+        if (app.trails) { app.trails.material.opacity = done ? 0.2 : eased * 0.2; app.trails.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
+        const shellTarget = app.config.blackHole ? 0.05 : 0.45;
+        if (app.shell) { app.shell.material.opacity = done ? shellTarget : eased * shellTarget; app.shell.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
+        if (app.core && app.core.material.uniforms) app.core.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased);
+        if (app.disk) {
+          const du = app.disk.material.uniforms;
+          du.uOpacity.value = eased * app.config.disk.opacity;
+          du.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased);
+          du.uColor2.value.copy(app.birthColor).lerp(app.config.color2, eased);
+          du.uColorHot.value.copy(app.birthColor).lerp(app.config.colorHot, eased);
+        }
+        const cs = Math.floor(eased * (app.targetStage||0));
+        const stages = ['Primordial','Emerged','Awakening','Growing','Thriving','Mature','Intense','Radiant','Ancient'];
+        // 仅当阶段序号变化时才更新 DOM，避免演化期间每帧触发布局
+        if (cs !== app.lastStageTick || done !== app.lastStageDone) {
+          app.lastStageTick = cs;
+          app.lastStageDone = done;
+          document.getElementById('particleCount').textContent = done ? (app.stageName||'') : ((stages[cs]||'') + ' → ' + (app.stageName||''));
+          renderStageDots(cs);
+        }
+        if (done && app.evolutionStart) {
+          app.evolutionStart = 0;
+        }
+      }
+
+            // Smooth bloom fade-in during evolution
+      let bloomTarget = 0.8 + (app.pulseBoost || 0) * 0.8;
+      if (app.evolutionStart && app.evolutionStart > 0) {
+        const elapsed = (performance.now() / 1000) - app.evolutionStart;
+        const raw = Math.min(1, elapsed / 5.0);
+        const eased = raw < 0.5 ? 4*raw*raw*raw : 1 - Math.pow(-2*raw+2,3)/2;
+        // Find bloom pass and smoothly increase
+        app.composer.passes.forEach(p => {
+          if (p.strength !== undefined) p.strength = 0.05 + eased * (bloomTarget - 0.05);
+        });
+      } else {
+        // 双向平滑追随目标强度（脉冲冲高后回落）
+        app.composer.passes.forEach(p => {
+          if (p.strength !== undefined) {
+            p.strength += (bloomTarget - p.strength) * 0.06;
+          }
+        });
+      }
+
+      // ── 点击脉冲衰减 + 呼吸缩放 ──
+      if (app.pulseBoost > 0) {
+        app.pulseBoost = Math.max(0, app.pulseBoost - 0.04);
+      }
+      if (app.organism) {
+        app.organism.scale.setScalar(
+          (app.birthScale || 1) *
+          (1 + (app.pulseBoost || 0) * 0.07)
+        );
+      }
+            // ── 形态光环自转 ──
+      if (app.morphRings) {
+        for (const ring of app.morphRings.children) {
+          ring.rotation.x += ring.userData.rx;
+          ring.rotation.y += ring.userData.ry;
+        }
+      }
+
+
+            // ── 远景星尘慢转 ──
+      if (app.starDust) {
+        app.starDust.rotation.y += 0.0003;
+        app.starDust.rotation.x += 0.0001;
+      }
+      if (app.starDust2) {
+        app.starDust2.rotation.y -= 0.0002;
+        app.starDust2.rotation.z += 0.00015;
+      if (app.nebulaDust) {
+        app.nebulaDust.rotation.y += 0.0005;
+        app.nebulaDust.rotation.x += 0.0003;
+      }
+      }
+
+      app.composer.render();
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById("toast");
+
+      toast.textContent = text;
+      toast.classList.add("show");
+
+      clearTimeout(showToast.timer);
+
+      showToast.timer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 1500);
+    }
+
+    async function generate() {
+      const input = document.getElementById("addressInput");
+      const address = input.value.trim();
+
+      if (!validAddress(address)) {
+        input.style.borderColor = "rgba(255,80,110,.85)";
+        document.getElementById("statusText").textContent =
+          "INVALID ADDRESS";
+
+        setTimeout(() => {
+          input.style.borderColor = "";
+          document.getElementById("statusText").textContent =
+            "LIFEFORM ACTIVE";
+        }, 1200);
+
+        return;
+      }
+
+      try {
+        await createOrganism(address);
+        saveHistory(address);
+        showToast("生命体已生成");
+      } catch (error) {
+        console.error(error);
+        showToast("生成失败");
+      }
+    }
+
+    // ── 历史记录（localStorage） ──
+    const HISTORY_KEY = "chainlife-history";
+
+    function loadHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveHistory(address) {
+      const list = loadHistory().filter((a) => a !== address);
+      list.unshift(address);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 10)));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const strip = document.getElementById("historyStrip");
+      if (!strip) return;
+
+      const list = loadHistory();
+      strip.textContent = "";
+      if (!list.length) {
+        strip.style.display = "none";
+        return;
+      }
+
+      strip.style.display = "flex";
+      list.forEach((addr) => {
+        const chip = document.createElement("button");
+        chip.className = "history-chip";
+        chip.textContent = shortAddress(addr);
+        chip.title = addr;
+        chip.addEventListener("click", () => {
+          document.getElementById("addressInput").value = addr;
+          generate();
+        });
+        strip.appendChild(chip);
+      });
+    }
+
+    // ── 连接钱包 ──
+    async function connectWallet() {
+      if (typeof window.ethereum === "undefined") {
+        showToast("请安装 MetaMask 钱包");
+        return;
+      }
+
+      try {
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts"
+        });
+        if (accounts && accounts[0]) {
+          document.getElementById("addressInput").value = accounts[0];
+          await generate();
+        }
+      } catch (error) {
+        console.error(error);
+        showToast("连接失败，请重试");
+      }
+    }
+
+    async function copyAddress() {
+      const value =
+        document.getElementById("addressInput").value;
+
+      try {
+        await navigator.clipboard.writeText(value);
+        showToast("地址已复制");
+      } catch {
+        showToast("复制失败，请手动复制");
+      }
+    }
+
+    // ── 链上生命 NFT · Living NFT v2（Arbitrum Sepolia, 2026-08-31 部署）──
+    const CHAINLIFE_NFT = {
+      address: "0xE802D61F0B5D10E2805119e0fbA696770a95Ed86",
+      chainId: "0x66EEE",
+      abi: [
+        "function mint(uint16 txCount, uint8 r, uint8 g, uint8 b, uint16 energy, uint8 stage, uint8 vitality) returns (uint256)",
+        "function feed(uint256 tokenId, string source, string eventId)",
+        "function sync(uint256 tokenId)",
+        "function syncStats(uint256 tokenId, uint16 txCount)",
+        "function lifeParams(uint256 tokenId) view returns (uint16 txCount, uint8 r, uint8 g, uint8 b, uint16 energy, uint8 stage, uint8 vitality, uint256 xp, uint256 lastFeedAt, uint256 bornAt, string lastEvent)"
+      ]
+    };
+
+    async function mintNFT() {
+      const config = app.config;
+      const btn = document.getElementById("mintButton");
+      if (!btn) return;
+
+      if (!config) { showToast("请先生成生命体"); return; }
+      if (typeof window.ethereum === "undefined") {
+        showToast("请安装 MetaMask 钱包");
+        return;
+      }
+      if (typeof window.ethers === "undefined") {
+        showToast("ethers 库未加载，请刷新重试");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "连接中...";
+
+      try {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: CHAINLIFE_NFT.chainId }]
+          });
+        } catch (switchErr) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: CHAINLIFE_NFT.chainId,
+              chainName: "Arbitrum Sepolia",
+              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
+              blockExplorerUrls: ["https://sepolia.arbiscan.io/"]
+            }]
+          });
+        }
+
+        btn.textContent = "铸造中...";
+
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(
+          CHAINLIFE_NFT.address, CHAINLIFE_NFT.abi, signer
+        );
+
+        const c = config.color;
+        const tx = await contract.mint(
+          Math.min(65535, Math.round(config.simTx)),
+          Math.round(c.r * 255),
+          Math.round(c.g * 255),
+          Math.round(c.b * 255),
+          Math.min(65535, Math.round(config.energy)),
+          config.targetStage,
+          config.vitality
+        );
+
+        await tx.wait();
+
+        // 铸造即同步：真实交易数上链，捕猎区解锁喂食
+        const tokenId = ethers.solidityPackedKeccak256(
+          ["address"], [await signer.getAddress()]
+        );
+        try {
+          await (await contract.syncStats(
+            tokenId, Math.min(65535, Math.round(config.simTx))
+          )).wait();
+        } catch {}
+
+        app.nftMinted = true;
+        renderHuntFeed();
+
+        showToast("NFT 铸造成功！一钱包一生命体");
+        console.log("NFT tx:", tx.hash);
+        console.log("NFT 查看:", "https://sepolia.arbiscan.io/nft/" +
+          CHAINLIFE_NFT.address + "/" +
+          ethers.keccak256(await signer.getAddress()));
+      } catch (error) {
+        console.error(error);
+        const msg = error.shortMessage || error.message || String(error);
+        showToast("铸造失败: " + msg.slice(0, 60));
+      }
+
+      btn.disabled = false;
+      btn.textContent = "铸造 NFT";
+    }
+
+    // ── AI 生平 + GMX 捕猎进化（Living NFT 前端联动）──
+    const STAGES9 = ["Primordial","Emerged","Awakening","Growing","Thriving","Mature","Intense","Radiant","Ancient"];
+    const CHAINLIFE_WORKER_URL = "https://chain-life.chainlife.workers.dev";
+
+    async function loadBioStory(address, config, onchain, assets) {
+      const panel = document.getElementById("bioPanel");
+      const token = (app.bioToken = (app.bioToken || 0) + 1);
+      panel.style.opacity = "1";
+      document.getElementById("bioName").textContent = "···";
+      document.getElementById("bioTraits").textContent = "";
+      document.getElementById("bioStory").textContent = "";
+      document.getElementById("bioEpitaph").textContent = "";
+      document.getElementById("bioStatus").textContent = "AI 正在阅读链上记录…";
+
+      const [transfers, gmxTrades] = await Promise.all([
+        fetchTransferHistory(address),
+        fetchGmxTrades(address)
+      ]);
+      if (token !== app.bioToken) return;
+      app.gmxTrades = gmxTrades;
+
+      const profile = generateWalletProfile(config);
+      const facts = buildBioFacts(address, config, onchain, assets, transfers, gmxTrades, profile.role);
+
+      renderHuntFeed();
+      if (!gmxTrades.length && !transfers.length) {
+        document.getElementById("bioStatus").textContent =
+          "该钱包没有可读的转账与交易记录，故事留白。";
+        return;
+      }
+
+      const isLocal = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+      if (!isLocal && !CHAINLIFE_WORKER_URL) {
+        document.getElementById("bioStatus").textContent =
+          "AI 传记服务即将上线（本地开发已可用）";
+        return;
+      }
+
+      const endpoint = isLocal ? "/bio" : CHAINLIFE_WORKER_URL + "/bio";
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            address,
+            facts,
+            lang: document.documentElement.lang === "zh-CN" ? "zh" : "en"
+          })
+        });
+        if (!res.ok) throw new Error("bio http " + res.status);
+        const bio = (await res.json()).bio;
+        if (!bio || token !== app.bioToken) return;
+
+        document.getElementById("bioName").textContent =
+          bio.name || "The Nameless One";
+        document.getElementById("bioTraits").textContent =
+          (bio.traits || []).map((t) => "· " + t).join("  ");
+        document.getElementById("bioEpitaph").textContent =
+          bio.epitaph ? "「" + bio.epitaph + "」" : "";
+        document.getElementById("bioStatus").textContent =
+          "由链上事实生成 · AI";
+
+        // 类型机逐字输出生平
+        const storyEl = document.getElementById("bioStory");
+        storyEl.textContent = "";
+        const story = (bio.story || "").replace(/\n+/g, "\n");
+        for (const ch of story) {
+          if (token !== app.bioToken) return;
+          storyEl.textContent += ch;
+          await new Promise((r) => setTimeout(r, ch === "\n" ? 60 : 9));
+        }
+      } catch (e) {
+        if (token === app.bioToken) {
+          document.getElementById("bioStatus").textContent =
+            "传记生成失败，稍后重试";
+        }
+      }
+    }
+
+    // 捕猎喂食区：GMX 交易 → feed() 进化（需已铸造 NFT）
+    function renderHuntFeed() {
+      const box = document.getElementById("bioHunts");
+      if (!box) return;
+      box.textContent = "";
+      const trades = (app.gmxTrades || []).slice(0, 3);
+      if (!trades.length) {
+        box.style.display = "none";
+        return;
+      }
+      box.style.display = "block";
+
+      const title = document.createElement("div");
+      title.textContent = "GMX HUNTS · 捕猎记录";
+      title.style.cssText =
+        "color:rgba(255,255,255,.25);font-size:8px;letter-spacing:.15em;margin-bottom:6px;";
+      box.appendChild(title);
+
+      trades.forEach((t) => {
+        const row = document.createElement("div");
+        row.style.cssText =
+          "display:flex;justify-content:space-between;align-items:center;" +
+          "font-size:10px;color:rgba(255,255,255,.6);margin-bottom:5px;";
+        const info = document.createElement("span");
+        info.textContent =
+          (t.eventName || "trade").replace("Order", "") +
+          " · $" + Math.round(parseFloat(t.sizeDeltaUsd || 0) / 1e30) +
+          (t.isLong ? " LONG" : " SHORT");
+        const feedBtn = document.createElement("button");
+        feedBtn.textContent = "喂食";
+        feedBtn.style.cssText =
+          "font-size:9px;padding:2px 8px;border-radius:8px;border:1px solid rgba(0,166,255,.4);" +
+          "background:rgba(0,166,255,.1);color:#7fd0ff;cursor:pointer;";
+        feedBtn.onclick = () => feedFromGmxTrade(t.transactionHash);
+        row.appendChild(info);
+        row.appendChild(feedBtn);
+        box.appendChild(row);
+      });
+    }
+
+    async function feedFromGmxTrade(txHash) {
+      const config = app.config;
+      if (!config) { showToast("请先生成生命体"); return; }
+      if (typeof window.ethereum === "undefined") { showToast("请安装 MetaMask"); return; }
+      if (typeof window.ethers === "undefined") { showToast("ethers 未加载，请刷新"); return; }
+
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: CHAINLIFE_NFT.chainId }]
+        });
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const owner = await signer.getAddress();
+        const tokenId = ethers.solidityPackedKeccak256(["address"], [owner]);
+        const contract = new ethers.Contract(CHAINLIFE_NFT.address, CHAINLIFE_NFT.abi, signer);
+
+        // 先同步真实交易数上链，再喂食（进化 = 余额 + 交易数 + XP）
+        try {
+          await (await contract.syncStats(
+            tokenId, Math.min(65535, Math.round(config.simTx))
+          )).wait();
+        } catch {}
+
+        const tx = await contract.feed(tokenId, "gmx-trade", txHash);
+        await tx.wait();
+
+        const p = await contract.lifeParams(tokenId);
+        app.pulseBoost = 1; // bloom 爆发
+        showToast("进化成功！阶段 → " + STAGES9[Number(p.stage)] +
+          " · XP " + p.xp);
+      } catch (e) {
+        const msg = (e.shortMessage || e.message || String(e));
+        showToast(msg.includes("digesting")
+          ? "消化中… 1 小时后再喂"
+          : msg.includes("not minted")
+            ? "先铸造 NFT，再喂食"
+            : "喂食失败: " + msg.slice(0, 50));
+      }
+    }
+
+    // ── 分享卡片：canvas 渲染生命体卡片（下载 PNG + 复制深链接）──
+    function shareCard() {
+      const config = app.config;
+      if (!config || !app.address) { showToast("请先生成生命体"); return; }
+      showToast("正在生成卡片…");
+      try {
+        const card = drawShareCard();
+        // 下载
+        const a = document.createElement("a");
+        a.download = "chainlife-" + app.address.slice(2, 10) + ".png";
+        a.href = card.toDataURL("image/png");
+        a.click();
+        // 复制深链接
+        navigator.clipboard?.writeText(
+          "https://montreefork.github.io/chain-life/?wallet=" + app.address
+        ).catch(() => {});
+        showToast("卡片已下载 · 链接已复制");
+      } catch (e) {
+        console.error("shareCard:", e);
+        showToast("卡片生成失败: " + String(e.message || e).slice(0, 120));
+      }
+    }
+
+    function drawShareCard() {
+      const config = app.config;
+      const profile = generateWalletProfile(config);
+      if (!config || !profile) return null;
+      const bioName = (document.getElementById("bioName")?.textContent || "").trim();
+      const name = bioName && !bioName.includes("·") && bioName !== "—"
+        ? bioName : STAGES9[config.targetStage] + " Lifeform";
+
+      const W = 1200, H = 630;
+      const c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      const ctx = c.getContext("2d");
+
+      // 背景：深空渐变 + 星尘
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, "#05060b");
+      bg.addColorStop(1, "#0b1226");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      const rng = createRandom(hashString(app.address.toLowerCase()));
+      for (let i = 0; i < 130; i++) {
+        const x = rng() * W, y = rng() * H;
+        const r = 0.5 + rng() * 1.4;
+        ctx.fillStyle = "rgba(255,255,255," + (0.15 + rng() * 0.5).toFixed(2) + ")";
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const cx = 350, cy = H / 2;
+      // .r/.g/.b 对 THREE.Color 实例与普通对象均可用（config 可能被序列化丢失原型）
+      const rgb = (k) => Math.round(
+        (k === 0 ? config.color.r : k === 1 ? config.color.g : config.color.b) * 255
+      );
+      const col = `rgb(${rgb(0)},${rgb(1)},${rgb(2)})`;
+      const haloCount = config.targetStage >= 8 ? 3 : config.targetStage >= 7 ? 2 : config.targetStage >= 5 ? 1 : 0;
+
+      // 光环（与 NFT SVG 同语言：Mature 起外光环）
+      for (let i = 0; i < haloCount; i++) {
+        ctx.strokeStyle = i === 1 ? "rgba(255,255,255,0.16)" : col;
+        ctx.globalAlpha = i === 0 ? 0.28 : i === 1 ? 0.16 : 0.35;
+        ctx.lineWidth = i === 0 ? 2 : 1.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 150 + i * 42, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      // 光晕球体
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 165);
+      glow.addColorStop(0, col);
+      glow.addColorStop(0.45, col);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 165, 0, Math.PI * 2);
+      ctx.fill();
+
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 86);
+      core.addColorStop(0, "rgba(255,255,255,0.95)");
+      core.addColorStop(0.18, col);
+      core.addColorStop(0.7, col);
+      core.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 86, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+
+      // 文字区
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.font = "500 22px -apple-system, 'PingFang SC', sans-serif";
+      ctx.letterSpacing = "6px";
+      ctx.fillText("CHAIN LIFE", 620, 180);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 64px -apple-system, 'PingFang SC', sans-serif";
+      ctx.fillText(name.slice(0, 24), 620, 270);
+
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.font = "400 26px -apple-system, 'PingFang SC', sans-serif";
+      ctx.fillText(
+        STAGES9[config.targetStage] + " · Energy " +
+        Math.round(config.energy) + " · " + profile.role,
+        620, 330
+      );
+
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.font = "400 18px monospace";
+      const deepLink =
+        "montreefork.github.io/chain-life/?wallet=" + app.address;
+      ctx.fillText(deepLink, 620, 410);
+
+      ctx.fillStyle = "rgba(255,255,255,0.22)";
+      ctx.font = "400 16px -apple-system, 'PingFang SC', sans-serif";
+      ctx.fillText("A living onchain organism · Arbitrum", 620, 560);
+
+      return c;
+    }
+
+    function showError(error) {
+      console.error(error);
+
+      const loading = document.getElementById("loading");
+
+      loading.innerHTML = `
+        <div class="error-box">
+          <div class="error-title">INITIALIZATION FAILED</div>
+          <div>
+            页面初始化失败。通常是 CDN 无法访问、浏览器 WebGL 被禁用，
+            或者直接打开本地文件导致模块加载受限。
+          </div>
+          <br>
+          <div>${String(error.message || error)}</div>
+          <br>
+          <div>
+            请使用本地服务器打开，例如：
+            <br>
+            python3 -m http.server 8080
+            <br>
+            然后访问 http://localhost:8080
+          </div>
+        </div>
+      `;
+    }
+
+    // ── 银河星野背景 v4：程序化银河带 + 4 层星野 + 稀有主角星 ──
+    // 移植自 GARGANTUA 的 background()，整体色调跟随生命体（uTint）。
+    function createSkyBackground() {
+      const geo = new THREE.SphereGeometry(60, 32, 32);
+
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uTint: { value: new THREE.Color(0.3, 0.36, 0.7) }
+        },
+
+        vertexShader: `
+          varying vec3 vDir;
+
+          void main() {
+            vDir = normalize(position);
+            gl_Position =
+              projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+
+        fragmentShader: `
+          uniform float uTime;
+          uniform vec3 uTint;
+
+          varying vec3 vDir;
+
+          float hash13(vec3 p) {
+            p = fract(p * 0.1031);
+            p += dot(p, p.zyx + 31.32);
+            return fract((p.x + p.y) * p.z);
+          }
+
+          vec3 hash33(vec3 p) {
+            p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+            p += dot(p, p.yxz + 33.33);
+            return fract((p.xxy + p.yxx) * p.zyx);
+          }
+
+          float vnoise(vec3 p) {
+            vec3 i = floor(p);
+            vec3 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            float n000 = hash13(i);
+            float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+            float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+            float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+            float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+            float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+            float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+            float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+            return mix(
+              mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+              mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
+              f.z);
+          }
+
+          float fbm(vec3 p) {
+            float a = 0.5;
+            float s = 0.0;
+            for (int k = 0; k < 5; k++) {
+              s += a * vnoise(p);
+              p = p * 2.03 + 11.3;
+              a *= 0.5;
+            }
+            return s;
+          }
+
+          mat3 rotAxis(vec3 a, float t) {
+            a = normalize(a);
+            float c = cos(t), s = sin(t), ic = 1.0 - c;
+            return mat3(
+              ic*a.x*a.x + c,     ic*a.x*a.y + s*a.z, ic*a.x*a.z - s*a.y,
+              ic*a.x*a.y - s*a.z, ic*a.y*a.y + c,     ic*a.y*a.z + s*a.x,
+              ic*a.x*a.z + s*a.y, ic*a.y*a.z - s*a.x, ic*a.z*a.z + c);
+          }
+
+          // 银河带：双层 fbm 云 + 尘埃暗带，颜色染成生命体同族色
+          vec3 galaxy(vec3 dir) {
+            vec3 n  = normalize(vec3(0.25, 1.0, 0.15));
+            vec3 t1 = normalize(cross(n, vec3(0.0, 0.0, 1.0)));
+            vec3 t2 = cross(n, t1);
+            float w = dot(dir, n);
+            float band = exp(-w * w * 7.0);
+            vec2 uv = vec2(dot(dir, t1), dot(dir, t2));
+            float cloud  = fbm(vec3(uv * 2.6, 7.0));
+            float cloud2 = fbm(vec3(uv * 5.4 + cloud * 1.8, 13.0));
+            float dust   = fbm(vec3(uv * 4.2 + 4.7, 21.0));
+            float dustMask = smoothstep(0.42, 0.78, dust);
+            vec3 deep = uTint * 0.22;
+            vec3 bright = mix(uTint, vec3(1.0), 0.25) * 0.75;
+            vec3 col = mix(deep, bright, smoothstep(0.30, 0.92, cloud2));
+            float inten =
+              band * (0.30 + 0.90 * cloud) * (1.0 - 0.62 * dustMask) * 0.55;
+            return col * inten;
+          }
+
+          vec3 starLayer(
+            vec3 dir, mat3 rot, float scale, float thresh, float soft
+          ) {
+            vec3 p = rot * dir * scale;
+            vec3 id = floor(p);
+            vec3 f = fract(p);
+            float h = hash13(id + 17.17);
+            if (h < thresh) return vec3(0.0);
+            vec3 sp = vec3(0.5) + 0.62 * (hash33(id + 3.71) - 0.5);
+            float d2 = dot(f - sp, f - sp);
+            float core = exp(-d2 * soft);
+            float halo = exp(-d2 * soft * 0.10) * 0.22;
+            float bright = 0.30 + 1.6 * pow(hash13(id + 9.3), 6.0);
+            vec3 tint = mix(
+              vec3(0.72, 0.84, 1.25), vec3(1.20, 0.95, 0.72),
+              hash13(id + 5.5));
+            return tint * (core + halo) * bright *
+              smoothstep(thresh, thresh + 0.015, h);
+          }
+
+          vec3 starField(vec3 dir) {
+            vec3 s = vec3(0.0);
+            s += starLayer(dir, rotAxis(vec3(0.2, 1.0, 0.1), 0.0), 9.0, 0.952, 230.0);
+            s += starLayer(dir, rotAxis(vec3(0.5, 0.8, 0.3), 1.9), 13.0, 0.952, 270.0);
+            s += starLayer(dir, rotAxis(vec3(0.9, 0.3, 0.6), 3.7), 17.0, 0.953, 310.0);
+            s += starLayer(dir, rotAxis(vec3(0.1, 0.6, 0.9), 5.1), 23.0, 0.968, 350.0) * 0.8;
+            // 稀有主角星：更大更柔的暖/蓝白亮星
+            vec3 p = rotAxis(vec3(0.4, 1.0, 0.2), 0.7) * dir * 4.0;
+            vec3 id = floor(p);
+            vec3 f = fract(p);
+            float h = hash13(id + 41.3);
+            if (h > 0.9975) {
+              vec3 sp = vec3(0.5) + 0.5 * (hash33(id + 11.1) - 0.5);
+              float d2 = dot(f - sp, f - sp);
+              vec3 tint = mix(
+                vec3(0.80, 0.90, 1.30), vec3(1.25, 1.00, 0.80),
+                hash13(id + 2.2));
+              s += tint * (exp(-d2 * 150.0) * 3.2 + exp(-d2 * 20.0) * 0.85);
+            }
+            return s;
+          }
+
+          void main() {
+            vec3 dir = normalize(vDir);
+            // 极慢的整体漂移，让背景"活着"
+            float t = uTime * 0.004;
+            dir = rotAxis(vec3(0.0, 1.0, 0.0), t) * dir;
+            vec3 col = vec3(0.010, 0.013, 0.028); // 天空底色
+            col += galaxy(dir);
+            col += starField(dir) * 0.85;
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `,
+
+        side: THREE.BackSide,
+        depthWrite: false
+      });
+
+      app.sky = new THREE.Mesh(geo, mat);
+      app.sky.renderOrder = -10;
+      app.sky.frustumCulled = false;
+      app.scene.add(app.sky);
+    }
+
+    // ── 钱包原型系统：活跃度 × 财富 × 身份 三维分类 ──
+    function generateWalletProfile(config) {
+      const e = config.energy || config.simTx || 0;
+      const tx = config.simTx || 0;
+      const bal = config.balanceEth;
+      const isContract = !!config.isContract;
+
+      let role, icon, age, accent;
+      const tags = [];
+
+      if (config.zeroAddress) {
+        role = "万物坟墓 The Void";
+        icon = "🕳️";
+        accent = "#8b6bff";
+        age = "虚无";
+        tags.push("零地址", "焚烧归集");
+      } else if (isContract) {
+        if (bal >= 1000) {
+          role = "机构金库 Institutional Vault";
+          icon = "🏦"; accent = "#ff5c5c"; age = "巨量储备";
+          tags.push("机构级储备", "资金中枢");
+        } else if (bal >= 10) {
+          role = "协议中枢 Protocol Nexus";
+          icon = "⚙️"; accent = "#5ce1e6"; age = "协议骨干";
+          tags.push("协议核心", "生态枢纽");
+        } else if (bal > 0) {
+          role = "活跃合约 Active Contract";
+          icon = "🔩"; accent = "#7ddb8c"; age = "运行中";
+          tags.push("链上合约", "持续运转");
+        } else {
+          role = "冷合约 Cold Contract";
+          icon = "🧊"; accent = "#8ea2b8"; age = "沉寂";
+          tags.push("无余额", "待唤醒");
+        }
+      } else {
+        if (e >= 8000) {
+          role = "远古存在 Ancient";
+          icon = "🐉"; accent = "#ff4dd8"; age = "远古";
+          tags.push("见证历史", "OG级地址");
+        } else if (e >= 2000) {
+          role = "巨鲸 Whale";
+          icon = "🐋"; accent = "#ff8c42"; age = "巅峰期";
+          tags.push("海量交易", "链上影响力");
+        } else if (e >= 500) {
+          role = "深度玩家 Power User";
+          icon = "🎮"; accent = "#ffd166"; age = "成熟期";
+          tags.push("频繁交互", "多协议活跃");
+        } else if (e >= 150) {
+          role = "活跃用户 Active";
+          icon = "⚡"; accent = "#7ddb8c"; age = "成长期";
+          tags.push("定期交易", "DeFi 常客");
+        } else if (e >= 50) {
+          role = "探索者 Explorer";
+          icon = "🧭"; accent = "#5bc0eb"; age = "初入链";
+          tags.push("偶尔交互", "谨慎试探");
+        } else if (e >= 10) {
+          role = "初学者 Beginner";
+          icon = "🌱"; accent = "#9be8ff"; age = "萌芽期";
+          tags.push("刚刚起步", "链上学习");
+        } else if (bal > 0) {
+          role = "潜眠者 Dormant";
+          icon = "🌙"; accent = "#c9b8ff"; age = "沉睡期";
+          tags.push("持有资产", "静待觉醒");
+        } else {
+          role = "空白之卵 Empty Egg";
+          icon = "🥚"; accent = "#c9d6e5"; age = "待孵化";
+          tags.push("全新地址", "尚无足迹");
+        }
+
+        // 组合标签：活跃 × 财富 交叉特征
+        if (tx >= 100 && bal !== null && bal < 0.5)
+          tags.push("空投猎人");
+        if (tx < 20 && bal !== null && bal >= 10)
+          tags.push("囤币大户 HODLer");
+        if (tx >= 1000 && bal !== null && bal >= 100)
+          tags.push("鲸群核心");
+        if (bal !== null && bal >= 1 && tx >= 20 && tx < 100)
+          tags.push("财富积累中");
+      }
+
+      return { role, icon, tags, age, tx, accent };
+    }
+
+    // ── 9 阶段点阵 ──
+    const STAGE_NAMES =
+      ['Primordial','Emerged','Awakening','Growing',
+       'Thriving','Mature','Intense','Radiant','Ancient'];
+
+    function renderStageDots(current) {
+      const track = document.getElementById("stageTrack");
+      if (!track) return;
+
+      if (!track.children.length) {
+        STAGE_NAMES.forEach((name) => {
+          const dot = document.createElement("div");
+          dot.className = "stage-dot";
+          dot.title = name;
+          track.appendChild(dot);
+        });
+      }
+
+      [...track.children].forEach((dot, i) => {
+        dot.className = "stage-dot" +
+          (i < current ? " passed" : "") +
+          (i === current ? " on" : "");
+      });
+    }
+
+    async function main() {
+      try {
+        initThree();
+
+        const input =
+          document.getElementById("addressInput");
+
+        document.getElementById("generateButton")
+          .addEventListener("click", generate);
+
+        document.getElementById("randomButton")
+          .addEventListener("click", () => {
+            input.value = randomAddress();
+            generate();
+          });
+
+        document.getElementById("copyButton")
+          .addEventListener("click", copyAddress);
+
+        document.getElementById("shareButton")
+          .addEventListener("click", shareCard);
+
+        document.getElementById("mintButton")
+          .addEventListener("click", mintNFT);
+
+        document.getElementById("connectButton")
+          .addEventListener("click", connectWallet);
+
+        renderHistory();
+
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            generate();
+          }
+        });
+
+        // 深链接：?wallet=0x… 直接展示指定钱包（分享链路闭环）
+        const urlWallet =
+          new URLSearchParams(location.search).get("wallet");
+        if (urlWallet && /^0x[0-9a-fA-F]{40}$/.test(urlWallet)) {
+          input.value = urlWallet;
+          createOrganism(urlWallet);
+        } else {
+          createOrganism(DEFAULT_ADDRESS);
+        }
+        animate();
+
+        setTimeout(() => {
+          document.getElementById("loading")
+            .classList.add("hidden");
+        }, 700);
+      } catch (error) {
+        showError(error);
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>

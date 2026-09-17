@@ -106,6 +106,14 @@ http.createServer(async (req, res) => {
       return;
     }
 
+    // v4 视觉实验版：吸积盘 + 银河背景 + 透镜扭曲
+    if (req.url && req.url.startsWith('/v4')) {
+      const html4 = fs.readFileSync(__dirname + '/index-v4.html', 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html4);
+      return;
+    }
+
     const html = readHtml(); // 先读文件再写头，避免文件异常时双重写头
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
