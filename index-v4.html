@@ -2022,12 +2022,25 @@
       );
       const disk = createAccretionDisk(config);
 
+      // ── 爱因斯坦环副本：模拟引力透镜把光环弯折到生命体上下方（GARGANTUA 招牌）──
+      const einsteinRings = [1.45, -1.45].map((rot) => {
+        const ring = disk.clone();
+        ring.material = ring.material.clone();
+        ring.material.uniforms.uBright.value = config.disk.bright * 0.4;
+        ring.material.uniforms.uOpacity.value = 0;
+        ring.rotation.set(rot, 0, (config.seed % 77) / 77 * 0.4 - 0.2);
+        ring.scale.setScalar(1.15);
+        ring.renderOrder = 2; // 盘副本在真盘之后，制造纵深
+        return ring;
+      });
+
       group.add(core);
       group.add(trails);
       group.add(shell);
       group.add(particles);
       group.add(disk);
       group.add(morphRings);
+      einsteinRings.forEach((r) => group.add(r));
 
       if (config.cage) group.add(createCage(config));
 
@@ -2052,15 +2065,17 @@
       app.trails = trails;
       app.particles = particles;
       app.disk = disk;
+      app.einsteinRings = einsteinRings;
       app.morphRings = morphRings;
       app.config = config;
       app.address = address;
 
-      // 透镜扭曲强度跟随生命体（黑洞全功率 + 事件视界阴影）
+      // 透镜扭曲强度跟随生命体（黑洞全功率 + 事件视界阴影；光子环全员都有，强度随阶段）
       if (app.lensPass) {
         app.lensPass.uniforms.uStrength.value = config.lensStrength;
         app.lensPass.uniforms.uShadow.value = config.blackHole ? 1 : 0;
-        app.lensPass.uniforms.uRing.value = config.blackHole ? 1 : 0;
+        app.lensPass.uniforms.uRing.value =
+          config.blackHole ? 1 : (config.targetStage >= 5 ? 0.55 : 0.25);
       }
 
       // 背景环境光跟随生命体颜色（--aura CSS 变量，带 1.5s 过渡）
@@ -2096,6 +2111,12 @@
         app.disk.material.uniforms.uColor2.value.copy(app.birthColor);
         app.disk.material.uniforms.uColorHot.value.copy(app.birthColor);
       }
+      app.einsteinRings?.forEach((r) => {
+        r.material.uniforms.uOpacity.value = 0;
+        r.material.uniforms.uColor.value.copy(app.birthColor);
+        r.material.uniforms.uColor2.value.copy(app.birthColor);
+        r.material.uniforms.uColorHot.value.copy(app.birthColor);
+      });
       app.evolutionStart = performance.now() / 1000;
 
       updateStats(address, config, onchain);
@@ -2552,6 +2573,9 @@
 
       if (app.disk) {
         app.disk.material.uniforms.uTime.value = time;
+        app.einsteinRings?.forEach((r) => {
+          r.material.uniforms.uTime.value = time;
+        });
       }
 
       if (app.sky) {
@@ -2594,6 +2618,13 @@
           du.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased);
           du.uColor2.value.copy(app.birthColor).lerp(app.config.color2, eased);
           du.uColorHot.value.copy(app.birthColor).lerp(app.config.colorHot, eased);
+          app.einsteinRings?.forEach((r) => {
+            const ru = r.material.uniforms;
+            ru.uOpacity.value = eased * app.config.disk.opacity * 0.55;
+            ru.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased);
+            ru.uColor2.value.copy(app.birthColor).lerp(app.config.color2, eased);
+            ru.uColorHot.value.copy(app.birthColor).lerp(app.config.colorHot, eased);
+          });
         }
         const cs = Math.floor(eased * (app.targetStage||0));
         const stages = ['Primordial','Emerged','Awakening','Growing','Thriving','Mature','Intense','Radiant','Ancient'];
