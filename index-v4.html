@@ -645,16 +645,38 @@
             <div class="stat-label">Chain</div>
             <div id="chainLabel" class="stat-value">ARB ONE</div>
           </div>
+
+          <div>
+            <div class="stat-label">Tx</div>
+            <div id="txCount" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Tokens</div>
+            <div id="tokenCount" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Energy</div>
+            <div id="energyVal" class="stat-value">--</div>
+          </div>
+
+          <div>
+            <div class="stat-label">Theme</div>
+            <div id="themeLabel" class="stat-value">--</div>
+          </div>
         </div>
       </section>
 
       <div class="hint">DRAG TO ROTATE · SCROLL TO ZOOM</div>
 
-      <section class="glass analysis" id="analysisPanel" style="position:absolute;right:26px;bottom:26px;width:230px;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
+      <section class="glass analysis" id="analysisPanel" style="position:absolute;right:26px;bottom:26px;width:240px;max-height:70vh;overflow-y:auto;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
         <div style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:12px;">Wallet Profile</div>
         <div id="walletRole" style="font-size:14px;margin-bottom:8px;">—</div>
         <div id="walletTags" style="font-size:10px;line-height:1.6;">—</div>
-        <div id="ageLabel" style="color:rgba(255,255,255,.3);font-size:9px;margin-top:4px;">—</div>
+        <div id="walletScores" style="margin-top:10px;"></div>
+        <div id="walletEval" style="font-size:9px;line-height:1.6;margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;"></div>
+        <div id="ageLabel" style="color:rgba(255,255,255,.3);font-size:9px;margin-top:8px;">—</div>
         <div id="assetList" style="margin-top:8px;"></div>
         <div id="sourceBadge" class="badge-source" style="display:none;margin-top:8px;"></div>
       </section>
@@ -1205,21 +1227,43 @@
         saturation = Math.min(1, saturation + 0.08);
       }
 
-      const color = new THREE.Color();
-      color.setHSL(targetHue, saturation, lightness);
+      // ── 主题调色板：每个钱包从 6 套三色主题中抽一套，颜色不再"换来换去就几种" ──
+      const PALETTES = [
+        { name: "极光", hues: [0.55, 0.82, 0.36] }, // 青绿 · 紫罗兰 · 翠绿
+        { name: "熔岩", hues: [0.06, 0.12, 0.55] }, // 红 · 橙 · 青
+        { name: "霓虹", hues: [0.85, 0.95, 0.58] }, // 品红 · 粉 · 蓝
+        { name: "深海", hues: [0.60, 0.48, 0.90] }, // 蓝 · 青 · 紫
+        { name: "翡翠", hues: [0.34, 0.22, 0.05] }, // 绿 · 金 · 橙红
+        { name: "暮光", hues: [0.75, 0.14, 0.44] }  // 紫 · 橙 · 黄绿
+      ];
+      const palette = PALETTES[Math.floor(rng() * PALETTES.length)];
 
-      // 光谱辅色：色相 ±0.28 分裂互补旋转（rng 决定方向），层次对比拉满
-      const hue2Dir = rng() < 0.5 ? 1 : -1;
+      const color = new THREE.Color();
+      color.setHSL(
+        ((palette.hues[0] + (rng() - 0.5) * 0.03) % 1 + 1) % 1,
+        Math.min(1, saturation * 0.95 + 0.08),
+        lightness
+      );
+
+      // 辅色：主题第二色（跨色对比，不再是单色相旋转）
       const color2 = new THREE.Color();
       color2.setHSL(
-        ((targetHue + hue2Dir * (0.28 + rng() * 0.08)) % 1 + 1) % 1,
-        Math.min(1, saturation * 0.95),
+        ((palette.hues[1] + (rng() - 0.5) * 0.05) % 1 + 1) % 1,
+        Math.min(1, saturation * 0.9 + 0.05),
         lightness * 0.9
       );
 
-      // 高温白核色：同色相、低饱和、高亮，给核心与粒子亮点
+      // 第三色：主题第三色（第三粒子族 / 尾迹点缀）
+      const color3 = new THREE.Color();
+      color3.setHSL(
+        ((palette.hues[2] + (rng() - 0.5) * 0.05) % 1 + 1) % 1,
+        Math.min(1, saturation * 0.85),
+        lightness * 0.82
+      );
+
+      // 高温白核色：主题主色相、低饱和、高亮，给核心与粒子亮点
       const colorHot = new THREE.Color();
-      colorHot.setHSL(targetHue, saturation * 0.25, Math.min(1, lightness + 0.28));
+      colorHot.setHSL(palette.hues[0], saturation * 0.22, Math.min(1, lightness + 0.3));
 
       const vitality = real
         ? Math.min(99, 55 +
@@ -1296,7 +1340,7 @@
 
       return {
         seed,
-        color, color2, colorHot, targetStage, targetHue, stageName, simTx, energy,
+        color, color2, color3, colorHot, targetStage, targetHue, stageName, simTx, energy, palette: palette.name,
         real, balanceEth, isContract,
         zeroAddress: blackHole,
         blackHole,
@@ -1489,7 +1533,9 @@
         sizes[i] = .2 + Math.pow(rng(), 2.4) * 1.8;
         lives[i] = rng();
         phases[i] = rng();
-        mixes[i] = rng() < 0.55 ? 0.0 : 1.0; // 主色/辅色两族粒子
+        // 三族粒子：45% 主色 / 35% 辅色 / 20% 第三色
+        const mr = rng();
+        mixes[i] = mr < 0.45 ? 0.0 : (mr < 0.8 ? 1.0 : 2.0);
       }
 
       const geometry = new THREE.BufferGeometry();
@@ -1524,6 +1570,7 @@
           uTime: { value: 0 },
           uColor: { value: config.color },
           uColor2: { value: config.color2 },
+          uColor3: { value: config.color3 },
           uColorHot: { value: config.colorHot },
           uPixelRatio: {
             value: Math.min(window.devicePixelRatio, 1.5)
@@ -1584,6 +1631,7 @@
         fragmentShader: `
           uniform vec3 uColor;
           uniform vec3 uColor2;
+          uniform vec3 uColor3;
           uniform vec3 uColorHot;
 
           varying float vLife;
@@ -1603,8 +1651,9 @@
             float alpha =
               (soft * .72 + core * .68) * vLife;
 
-            // 主色/辅色两族 + 核心高温漂白
-            vec3 base = mix(uColor, uColor2, vColorMix);
+            // 三色族：vColorMix ∈ {0,1,2} 阶梯混色 + 核心高温漂白
+            vec3 base = mix(uColor, uColor2, clamp(vColorMix, 0.0, 1.0));
+            base = mix(base, uColor3, step(1.5, vColorMix));
             vec3 hdrColor =
               mix(base, uColorHot, core * .85) * (1.05 + core * 1.9);
 
@@ -2150,6 +2199,24 @@
           : "— 模拟";
       }
 
+      // 扩展数据维度：Tx / 持仓 / 能量 / 主题
+      const txEl = document.getElementById("txCount");
+      if (txEl) {
+        txEl.textContent = config.isContract ? "合约" : (config.simTx || 0).toLocaleString();
+      }
+      const tokEl = document.getElementById("tokenCount");
+      if (tokEl) {
+        tokEl.textContent = (config.assets || []).length + " 种";
+      }
+      const enEl = document.getElementById("energyVal");
+      if (enEl) {
+        enEl.textContent = Math.round(config.energy).toLocaleString();
+      }
+      const thEl = document.getElementById("themeLabel");
+      if (thEl) {
+        thEl.textContent = config.palette || "—";
+      }
+
       const status = document.getElementById("statusText");
       if (status) {
         status.textContent = config.real
@@ -2179,6 +2246,45 @@
           pill.style.background = profile.accent + '14';
           tagsEl.appendChild(pill);
         });
+
+        // 四维评分条
+        const scoreEl = document.getElementById('walletScores');
+        if (scoreEl) {
+          scoreEl.textContent = '';
+          profile.scores.forEach((s) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'margin-bottom:5px;';
+            const head = document.createElement('div');
+            head.style.cssText =
+              'display:flex;justify-content:space-between;font-size:8px;' +
+              'color:rgba(255,255,255,.4);margin-bottom:2px;';
+            const lab = document.createElement('span');
+            lab.textContent = s.label;
+            const val = document.createElement('span');
+            val.textContent = s.value;
+            val.style.color = 'rgba(255,255,255,.7)';
+            head.appendChild(lab);
+            head.appendChild(val);
+            const bar = document.createElement('div');
+            bar.style.cssText =
+              'height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;';
+            const fill = document.createElement('div');
+            fill.style.cssText =
+              'height:100%;width:' + s.value + '%;border-radius:2px;' +
+              'background:linear-gradient(90deg,' + profile.accent + '88,' + profile.accent + ');';
+            bar.appendChild(fill);
+            row.appendChild(head);
+            row.appendChild(bar);
+            scoreEl.appendChild(row);
+          });
+        }
+
+        // 一句话评价
+        const evalEl = document.getElementById('walletEval');
+        if (evalEl) {
+          evalEl.textContent = '「' + profile.evaluation + '」';
+          evalEl.style.color = profile.accent + 'aa';
+        }
 
         document.getElementById('ageLabel').textContent =
           profile.age +
@@ -2576,6 +2682,12 @@
         app.einsteinRings?.forEach((r) => {
           r.material.uniforms.uTime.value = time;
         });
+        // 盘面进动：缓慢摆动，像在呼吸；亮度微脉动
+        const wobble = Math.sin(time * 0.21) * 0.055;
+        app.disk.rotation.x =
+          0.52 + (app.config.seed % 100) / 100 * 0.3 + wobble;
+        app.disk.material.uniforms.uBright.value =
+          app.config.disk.bright * (1 + Math.sin(time * 0.9) * 0.06);
       }
 
       if (app.sky) {
@@ -2966,8 +3078,19 @@
 
         document.getElementById("bioName").textContent =
           bio.name || "The Nameless One";
-        document.getElementById("bioTraits").textContent =
-          (bio.traits || []).map((t) => "· " + t).join("  ");
+        // traits 用胶囊标签渲染，避免长文本挤压折叠
+        const traitsEl = document.getElementById("bioTraits");
+        traitsEl.textContent = "";
+        (bio.traits || []).forEach((t) => {
+          const pill = document.createElement("span");
+          pill.className = "tag-pill";
+          pill.textContent = t;
+          pill.style.borderColor = "rgba(255,255,255,.18)";
+          pill.style.color = "rgba(255,255,255,.65)";
+          pill.style.background = "rgba(255,255,255,.06)";
+          pill.style.marginRight = "4px";
+          traitsEl.appendChild(pill);
+        });
         document.getElementById("bioEpitaph").textContent =
           bio.epitaph ? "「" + bio.epitaph + "」" : "";
         document.getElementById("bioStatus").textContent =
@@ -3390,6 +3513,7 @@
       const tx = config.simTx || 0;
       const bal = config.balanceEth;
       const isContract = !!config.isContract;
+      const holdings = (config.assets || []).length;
 
       let role, icon, age, accent;
       const tags = [];
@@ -3453,18 +3577,63 @@
           tags.push("全新地址", "尚无足迹");
         }
 
-        // 组合标签：活跃 × 财富 交叉特征
-        if (tx >= 100 && bal !== null && bal < 0.5)
-          tags.push("空投猎人");
-        if (tx < 20 && bal !== null && bal >= 10)
-          tags.push("囤币大户 HODLer");
-        if (tx >= 1000 && bal !== null && bal >= 100)
-          tags.push("鲸群核心");
-        if (bal !== null && bal >= 1 && tx >= 20 && tx < 100)
-          tags.push("财富积累中");
+        // ── 组合标签池：活跃 × 财富 × 持仓 × 阶段 交叉特征 ──
+        const b = bal === null ? 0 : bal;
+        if (tx >= 100 && b < 0.5) tags.push("空投猎人");
+        if (tx < 20 && b >= 10) tags.push("囤币大户 HODLer");
+        if (tx >= 1000 && b >= 100) tags.push("鲸群核心");
+        if (b >= 1 && tx >= 20 && tx < 100) tags.push("财富积累中");
+        if (tx >= 5000) tags.push("链上老兵");
+        if (tx >= 200 && tx < 1000) tags.push("高频交易者");
+        if (b >= 100) tags.push("百枚ETH俱乐部");
+        if (b >= 1000) tags.push("千枚ETH传说");
+        if (b >= 0.1 && b < 1) tags.push("小额活跃");
+        if (holdings >= 3) tags.push("多元持仓");
+        if (holdings >= 6) tags.push("资产收藏家");
+        if (holdings >= 1 && holdings <= 2) tags.push("聚焦持仓");
+        if (tx >= 10 && tx < 50 && b > 0) tags.push("稳健漫步者");
+        if (tx === 0 && b > 0) tags.push("只进不出");
+        if (tx <= 3 && b === 0) tags.push("出生即沉默");
+        if (config.targetStage >= 7) tags.push("进化顶端");
+        if (config.targetStage <= 1) tags.push("原始生命");
+        if (config.vitality >= 80) tags.push("生命力旺盛");
+        if (config.vitality < 30) tags.push("气息微弱");
       }
 
-      return { role, icon, tags, age, tx, accent };
+      // ── 四维评分（0-99）──
+      const wealth = Math.min(99, Math.round(Math.log10(1 + (bal || 0)) * 18));
+      const footprint = Math.min(99, Math.round(Math.log10(1 + tx) * 22));
+      const wisdom = Math.min(99, Math.round(
+        holdings * 10 + (isContract ? 12 : 0) + (tx > 200 ? 8 : 0)
+      ));
+      const vitality = config.vitality || 50;
+      const scores = [
+        { key: "wealth", label: "财富", value: wealth },
+        { key: "footprint", label: "足迹", value: footprint },
+        { key: "wisdom", label: "智慧", value: wisdom },
+        { key: "vitality", label: "活力", value: vitality }
+      ];
+
+      // ── 一句话评价（按原型 + 特征从模板池挑选）──
+      const EVALS = [
+        "链上岁月写成的地址，每一笔交易都是它的呼吸。",
+        "低调的持有者，时间会证明它的耐心。",
+        "它见过牛熊，也见过离别，如今依旧在链上。",
+        "高频进出之间，藏着对市场最敏锐的嗅觉。",
+        "资产在它手里，像一场精心编排的舞蹈。",
+        "沉默不是离开，而是在等待下一个机会。",
+        "链上的每一步，都是它性格的注脚。",
+        "从零到一的地址，正在书写自己的传说。",
+        "它的钱包里装的不只是资产，还有故事。",
+        "安静的鲸鱼，游弋在数据的深海里。",
+        "每一次交互都在积累，每一次积累都是成长。",
+        "链上世界里的常客，从不缺席重要时刻。"
+      ];
+      const seed = config.seed || 0;
+      const evalIdx = (seed >>> 0) % EVALS.length;
+      const evaluation = EVALS[evalIdx];
+
+      return { role, icon, tags, age, tx, accent, scores, evaluation };
     }
 
     // ── 9 阶段点阵 ──
