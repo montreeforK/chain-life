@@ -921,7 +921,17 @@
       const gmxVolume = gmxTrades.reduce(
         (s, t) => s + parseFloat(t.sizeDeltaUsd || 0) / 1e30, 0);
 
-      const facts = {
+      // 中本聪创世彩蛋：AI 讲述链外传说
+      const satoshiFacts = config.satoshi
+        ? {
+            born: "2009-01-03 (Bitcoin Genesis Block)",
+            firstTx: "the 50 BTC genesis coinbase",
+            biggestTx: "a message engraved in the first block",
+            note: "This address belongs to a legend from another chain."
+          }
+        : null;
+
+      const facts = satoshiFacts || {
         address: address.slice(0, 10) + "...",
         born: oldest?.metadata?.blockTimestamp?.slice(0, 10) || "unknown",
         firstTx: oldest
@@ -1195,6 +1205,16 @@
         simTx = isContract ? 0 : onchain.txCount;
       }
 
+      // ── 中本聪创世彩蛋：不属于 Arbitrum 的创世者，在此链降临为巅峰存在 ──
+      const SATOSHI_ADDR = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+      const satoshi = address.toLowerCase() === SATOSHI_ADDR.toLowerCase();
+      if (satoshi) {
+        real = false;      // 它的真实历史不在这条链上
+        energy = 99999;    // 全链最古老的存在
+        simTx = 99999;
+        balanceEth = 0;
+      }
+
       let targetStage = 0;
       for (let i = 8; i >= 0; i--) { if (energy >= LIFECYCLE[i].minTx) { targetStage = i; break; } }
       const stageName = LIFECYCLE[targetStage].name;
@@ -1230,16 +1250,24 @@
         saturation = Math.min(1, saturation + 0.08);
       }
 
-      // ── 主题调色板：每个钱包从 6 套三色主题中抽一套，颜色不再"换来换去就几种" ──
+      // ── 主题调色板：每个钱包从 12 套三色主题中抽一套 ──
       const PALETTES = [
         { name: "极光", hues: [0.55, 0.82, 0.36] }, // 青绿 · 紫罗兰 · 翠绿
         { name: "熔岩", hues: [0.06, 0.12, 0.55] }, // 红 · 橙 · 青
         { name: "霓虹", hues: [0.85, 0.95, 0.58] }, // 品红 · 粉 · 蓝
         { name: "深海", hues: [0.60, 0.48, 0.90] }, // 蓝 · 青 · 紫
         { name: "翡翠", hues: [0.34, 0.22, 0.05] }, // 绿 · 金 · 橙红
-        { name: "暮光", hues: [0.75, 0.14, 0.44] }  // 紫 · 橙 · 黄绿
+        { name: "暮光", hues: [0.75, 0.14, 0.44] }, // 紫 · 橙 · 黄绿
+        { name: "星云", hues: [0.90, 0.65, 0.30] }, // 紫粉 · 蓝 · 绿
+        { name: "极夜", hues: [0.58, 0.72, 0.98] }, // 蓝 · 靛紫 · 洋红
+        { name: "晨霞", hues: [0.08, 0.02, 0.52] }, // 橙红 · 红 · 青蓝
+        { name: "薄荷", hues: [0.44, 0.35, 0.55] }, // 黄绿 · 绿 · 青
+        { name: "紫金", hues: [0.78, 0.13, 0.60] }, // 紫 · 金黄 · 蓝
+        { name: "靛蓝", hues: [0.63, 0.55, 0.30] }  // 靛 · 青 · 绿
       ];
-      const palette = PALETTES[Math.floor(rng() * PALETTES.length)];
+      const palette = satoshi
+        ? { name: "创世金", hues: [0.11, 0.05, 0.58] } // 金橙 · 红 · 青
+        : PALETTES[Math.floor(rng() * PALETTES.length)];
 
       const color = new THREE.Color();
       color.setHSL(
@@ -1318,12 +1346,18 @@
 
       const blackHole =
         address.toLowerCase() ===
-        "0x0000000000000000000000000000000000000000";
+        "0x0000000000000000000000000000000000000000" || satoshi;
 
       if (blackHole) {
         // 万物坟墓：极慢、三层暗环
         rotation *= .3;
         ringCount = 3;
+      }
+
+      if (satoshi) {
+        // 创世者：吸积盘极宽极亮，自转最慢（时间在它身边凝固）
+        rotation *= 0.75;
+        pulse *= 0.85;
       }
 
       // ── 吸积盘参数：阶段越高盘越宽越亮（借鉴 GARGANTUA 黑洞吸积盘）──
@@ -1332,7 +1366,7 @@
         inner: radius + 0.55,
         outer: radius + 0.55 + 1.3 + stageT * 2.6,
         rotSpeed: (0.55 + rng() * 0.45) * (energy < 50 ? 0.5 : 1),
-        bright: blackHole ? 1.1 : 0.30 + stageT * 0.45,
+        bright: satoshi ? 1.35 : (blackHole ? 1.1 : 0.30 + stageT * 0.45),
         opacity: blackHole ? 1.0 : 0.55 + stageT * 0.45
       };
 
@@ -1344,9 +1378,11 @@
       return {
         seed,
         color, color2, color3, colorHot, targetStage, targetHue, stageName, simTx, energy, palette: palette.name,
+        hue0: palette.hues[0], hue2: palette.hues[2],
         real, balanceEth, isContract,
         zeroAddress: blackHole,
         blackHole,
+        satoshi,
         disk,
         lensStrength,
         radius,
@@ -1371,7 +1407,11 @@
           uDistortion: { value: config.distortion },
           uPulse: { value: config.pulse },
           uColor: { value: config.color },
-          uColor2: { value: config.color2 }
+          uColor2: { value: config.color2 },
+          uColor3: { value: config.color3 },
+          uHue0: { value: config.hue0 },
+          uHue2: { value: config.hue2 },
+          uReveal: { value: 0 }
         },
 
         vertexShader: `
@@ -1427,17 +1467,32 @@
         fragmentShader: `
           uniform vec3 uColor;
           uniform vec3 uColor2;
+          uniform vec3 uColor3;
+          uniform float uHue0;
+          uniform float uHue2;
+          uniform float uReveal;
 
           varying float vNoise;
           varying vec3 vNormalWorld;
+
+          vec3 hsl2rgb(float h, float s, float l) {
+            vec3 p = abs(fract(h + vec3(0.0, 1.0 / 3.0, 2.0 / 3.0)) * 6.0 - 3.0);
+            vec3 rgb = clamp(p - 1.0, 0.0, 1.0);
+            return l + s * (rgb - 0.5) * (1.0 - abs(2.0 * l - 1.0));
+          }
 
           void main() {
             float edge = pow(1.0 - abs(vNormalWorld.z), 1.5);
             float energy = .55 + vNoise * .35 + edge * .6;
 
-            // 光谱虹彩：噪声 + 菲涅尔边缘双驱动，边缘出现异色镀膜光晕
-            vec3 spectral = mix(uColor, uColor2, vNoise * 0.55 + edge * 0.45);
-            vec3 hdrColor = spectral * energy * 1.15;
+            // 油彩虹彩：噪声驱动色相在主题首尾色间扫过，每个壳面
+            // 呈现流动的多彩光谱；边缘菲涅尔镀膜混辅色与第三色
+            float sweep = fract(vNoise * 0.9 + edge * 0.25);
+            float hue = mix(uHue0, uHue2, sweep);
+            vec3 irid = hsl2rgb(hue, 0.82, 0.60);
+            irid = mix(irid, uColor2, edge * 0.35);
+            irid = mix(irid, uColor3, edge * edge * 0.25);
+            vec3 hdrColor = mix(uColor * 1.6, irid, uReveal) * energy * 1.25;
 
             gl_FragColor = vec4(hdrColor, .22);
           }
@@ -2477,10 +2532,10 @@
               col *= smoothstep(0.10, 0.24, r);
             }
 
-            // 光子环：视界外缘的细亮环
-            if (uRing > 0.5) {
+            // 光子环：视界外缘的细亮环，强度随 uRing 分级（黑洞全功率）
+            if (uRing > 0.01) {
               float ring = exp(-pow((r - 0.30) * 38.0, 2.0));
-              col += vec3(1.0, 0.92, 0.80) * ring * 0.30;
+              col += vec3(1.0, 0.92, 0.80) * ring * (0.10 + uRing * 0.30);
             }
 
             gl_FragColor = vec4(col, 1.0);
@@ -2725,7 +2780,7 @@
         if (app.particles) { app.particles.material.opacity = done ? 0.5 : eased * 0.5; app.particles.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
         if (app.trails) { app.trails.material.opacity = done ? 0.2 : eased * 0.2; app.trails.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
         const shellTarget = app.config.blackHole ? 0.05 : 0.45;
-        if (app.shell) { app.shell.material.opacity = done ? shellTarget : eased * shellTarget; app.shell.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); }
+        if (app.shell) { app.shell.material.opacity = done ? shellTarget : eased * shellTarget; app.shell.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased); if (app.shell.material.uniforms.uReveal) app.shell.material.uniforms.uReveal.value = eased; }
         if (app.core && app.core.material.uniforms) app.core.material.uniforms.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased);
         if (app.disk) {
           const du = app.disk.material.uniforms;
@@ -3051,7 +3106,8 @@
       const facts = buildBioFacts(address, config, onchain, assets, transfers, gmxTrades, profile.role);
 
       renderHuntFeed();
-      if (!gmxTrades.length && !transfers.length) {
+      // 创世者例外：它的历史在另一条链上，由彩蛋事实讲述
+      if (!gmxTrades.length && !transfers.length && !config.satoshi) {
         document.getElementById("bioStatus").textContent =
           "该钱包没有可读的转账与交易记录，故事留白。";
         return;
@@ -3521,7 +3577,13 @@
       let role, icon, age, accent;
       const tags = [];
 
-      if (config.zeroAddress) {
+      if (config.satoshi) {
+        role = "创世者 The Genesis";
+        icon = "⦿";
+        accent = "#ffb347";
+        age = "创世 · 2009";
+        tags.push("链外传说", "一切的开端");
+      } else if (config.zeroAddress) {
         role = "万物坟墓 The Void";
         icon = "🕳️";
         accent = "#8b6bff";
@@ -3703,7 +3765,7 @@
         // 深链接：?wallet=0x… 直接展示指定钱包（分享链路闭环）
         const urlWallet =
           new URLSearchParams(location.search).get("wallet");
-        if (urlWallet && /^0x[0-9a-fA-F]{40}$/.test(urlWallet)) {
+        if (urlWallet && /^(0x[0-9a-fA-F]{40}|[1-3][A-Za-z0-9]{25,34})$/.test(urlWallet)) {
           input.value = urlWallet;
           createOrganism(urlWallet);
         } else {
