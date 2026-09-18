@@ -1811,8 +1811,14 @@
               smoothstep(0.0, .16, life) *
               (1.0 - smoothstep(.66, 1.0, life));
 
+            // 游动：每条尾迹沿法向缓慢波动（两端相位一致 → 整条线像水草）
+            float w =
+              sin(uTime * .5 + aLife * 50.0) * .05;
+            vec3 axis = normalize(cross(position, vec3(0.0, 1.0, 0.0)));
+            vec3 waved = position + axis * w * (.35 + aSide * .65);
+
             vec4 viewPosition =
-              modelViewMatrix * vec4(position, 1.0);
+              modelViewMatrix * vec4(waved, 1.0);
 
             vAlpha =
               fade * (.2 + aSide * .18);
@@ -1989,6 +1995,11 @@
             // 压平径向衰减 + 亮度地板：整盘可见，不只内缘一条线
             float I = (pow(flux, 0.6) * 6.0 + 0.55) * pat;
             I += exp(-pow((R - 3.1) * 3.0, 2.0)) * 1.5; // 内缘灼热亮环
+            // 能量涟漪：周期性从内缘涌出一圈热波向外扩散
+            float waveR = fract(uTime * 0.12);
+            float ripple = exp(
+              -pow((R - (3.2 + waveR * (Rout - 3.2))) * 10.0, 2.0));
+            I += ripple * (0.5 + 0.5 * sin(waveR * 3.14159)) * 0.7;
             I *= fade * innerFade;
             I = min(I, 2.5); // 封顶防过曝，纹理不被烧白
 
@@ -2638,6 +2649,7 @@
 
       canvas.addEventListener("pointerdown", (event) => {
         app.dragging = true;
+        app.lastInteract = performance.now();
         app.lastX = event.clientX;
         app.lastY = event.clientY;
         app.downX = event.clientX;
@@ -2679,6 +2691,7 @@
 
       canvas.addEventListener("wheel", (event) => {
         event.preventDefault();
+        app.lastInteract = performance.now();
 
         app.targetZoom += event.deltaY * .004;
 
@@ -2702,6 +2715,13 @@
 
       app.currentZoom +=
         (app.targetZoom - app.currentZoom) * .07;
+
+      // ── 空闲自动电影镜头：3 秒未交互后相机缓慢环绕 + 轻微仰俯摆动 ──
+      if (!app.dragging &&
+          performance.now() - (app.lastInteract || 0) > 3000) {
+        app.targetY += 0.0016; // 缓慢环绕
+        app.targetX = Math.sin(time * 0.1) * 0.07; // 呼吸式仰俯
+      }
 
       app.camera.position.z = app.currentZoom;
 
@@ -2750,6 +2770,7 @@
 
       if (app.sky) {
         app.sky.material.uniforms.uTime.value = time;
+        app.sky.rotation.y = time * 0.008; // 星尘缓慢漂移
       }
 
       // 透镜扭曲：uCenter 跟随生命体屏幕投影，uTime 驱动动态颗粒
@@ -3772,6 +3793,24 @@
           createOrganism(DEFAULT_ADDRESS);
         }
         animate();
+
+        // ── 演示模式 ?demo=1：自动循环切换生命体（录视频手不碰鼠标）──
+        if (new URLSearchParams(location.search).get("demo") === "1") {
+          const seq = [
+            "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",                    // 创世者
+            "0x1FF34ee1be95d98C259f5da80F9bdE40C9cdCB85",             // GMX 捕猎者
+            "0x0000000000000000000000000000000000000000"              // 万物坟墓
+          ];
+          let i = 0;
+          const next = () => {
+            const addr = i < seq.length ? seq[i] : randomAddress();
+            i++;
+            input.value = addr;
+            createOrganism(addr);
+            setTimeout(next, 12000);
+          };
+          next(); // 覆盖初始默认生命体，从创世者开场
+        }
 
         setTimeout(() => {
           document.getElementById("loading")
