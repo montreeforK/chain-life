@@ -305,7 +305,7 @@
     .stats {
       position: absolute;
       left: 26px;
-      bottom: 26px;
+      top: 26px;
       width: 250px;
       padding: 17px;
       border-radius: 20px;
@@ -487,6 +487,13 @@
       transform: translate(-50%, 0);
     }
 
+    @media (max-width: 1250px) {
+      /* 顶栏居中面板在中等窗口下会伸到左上，数据面板让位隐藏 */
+      .stats {
+        display: none;
+      }
+    }
+
     @media (max-width: 650px) {
       .panel {
         top: 14px;
@@ -514,7 +521,7 @@
 
       .stats {
         left: 14px;
-        bottom: 14px;
+        top: 14px;
         width: 215px;
         padding: 14px;
       }
@@ -529,10 +536,6 @@
     @media (max-width: 420px) {
       .hint {
         display: none;
-      }
-
-      .stats {
-        width: 190px;
       }
 
       .stat-value {
