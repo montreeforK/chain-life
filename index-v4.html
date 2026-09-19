@@ -609,6 +609,10 @@
             <button id="shareButton" class="small-button">
               分享卡片
             </button>
+
+            <button id="sybilButton" class="small-button">
+              身份筛查
+            </button>
           </div>
         </div>
       </section>
@@ -696,6 +700,24 @@
     </div>
 
     <div id="toast" class="toast"></div>
+
+    <div id="sybilOverlay" style="display:none;position:fixed;inset:0;z-index:60;background:rgba(3,4,8,.82);backdrop-filter:blur(10px);">
+      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(860px,92vw);max-height:82vh;overflow-y:auto;padding:26px;border-radius:24px;background:rgba(10,13,24,.95);border:1px solid rgba(255,255,255,.12);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div style="font-size:15px;">Chain Life 身份筛查 · Sybil Check</div>
+          <button id="sybilClose" style="background:none;border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;">✕</button>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:10px;">
+          粘贴 Arbitrum 地址（每行一个，最多 20 个）——按链上生命阶段与评分判断钱包真实性，辅助空投女巫过滤。生命阶段与评分全部来自真实链上数据。
+        </div>
+        <textarea id="sybilInput" rows="6" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font-family:monospace;font-size:11px;padding:10px;" placeholder="0x…&#10;0x…"></textarea>
+        <div style="margin-top:12px;display:flex;gap:10px;">
+          <button id="sybilRun" style="padding:8px 18px;border-radius:10px;border:1px solid rgba(0,166,255,.5);background:rgba(0,166,255,.15);color:#7fd0ff;cursor:pointer;font-size:12px;">开始筛查</button>
+          <button id="sybilCsv" style="display:none;padding:8px 18px;border-radius:10px;border:1px solid rgba(139,232,160,.5);background:rgba(139,232,160,.12);color:#8be8a0;cursor:pointer;font-size:12px;">导出 CSV</button>
+        </div>
+        <div id="sybilResults" style="margin-top:16px;"></div>
+      </div>
+    </div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
@@ -3400,6 +3422,132 @@
       return c;
     }
 
+    // ── 身份筛查（Sybil Check）：批量钱包 → 生命阶段/评分 → 真实性判定 ──
+    function sybilVerdict(config) {
+      if (config.satoshi) return { text: "创世者 ⦿", color: "#ffb347" };
+      if (config.isContract) return { text: "合约体", color: "#5ce1e6" };
+      if (config.targetStage >= 5) return { text: "真实生命 ✓", color: "#8be8a0" };
+      if (config.targetStage >= 2) return { text: "真实生命", color: "#a8d8b0" };
+      if ((config.simTx || 0) > 0) return { text: "幼体", color: "#ffd166" };
+      return { text: "可疑新号 ⚠", color: "#ff5c5c" };
+    }
+
+    async function runSybil() {
+      const raw = document.getElementById("sybilInput").value.trim();
+      const addrs = [...new Set(
+        raw.split(/\s+/).filter((a) =>
+          /^(0x[0-9a-fA-F]{40}|[1-3][A-Za-z0-9]{25,34})$/.test(a))
+      )].slice(0, 20);
+
+      const box = document.getElementById("sybilResults");
+      if (!addrs.length) {
+        box.innerHTML =
+          '<div style="color:rgba(255,255,255,.4);font-size:11px;">请输入至少一个有效地址</div>';
+        return;
+      }
+
+      box.innerHTML =
+        '<div style="color:rgba(255,255,255,.4);font-size:11px;">筛查中（' +
+        addrs.length + ' 个地址，实时链上数据）…</div>';
+
+      const rows = [];
+      const queue = [...addrs];
+      const lane = async () => {
+        while (queue.length) {
+          const addr = queue.shift();
+          let onchain = null;
+          try {
+            onchain = await fetchOnchainData(addr);
+          } catch {
+            // RPC 失败/非 EVM 地址（如中本聪 BTC 地址）→ 回退模拟+彩蛋
+            onchain = null;
+          }
+          try {
+            const config = createConfig(addr, onchain);
+            const profile = generateWalletProfile(config);
+            rows.push({ addr, config, profile, verdict: sybilVerdict(config) });
+          } catch {
+            rows.push({ addr, config: null, profile: null,
+              verdict: { text: "查询失败", color: "#888" } });
+          }
+        }
+      };
+      await Promise.all([lane(), lane(), lane(), lane()]);
+      rows.sort((a, b) => (b.config?.energy || 0) - (a.config?.energy || 0));
+      app.sybilRows = rows;
+
+      // 渲染结果表
+      box.textContent = "";
+      const table = document.createElement("table");
+      table.style.cssText =
+        "width:100%;border-collapse:collapse;font-size:10px;font-family:monospace;";
+      const thead = document.createElement("thead");
+      thead.innerHTML =
+        '<tr style="color:rgba(255,255,255,.35);text-align:left;">' +
+        "<th style=\"padding:6px;\">ADDRESS</th>" +
+        "<th>原型</th><th>阶段</th><th>能量</th><th>财富</th><th>足迹</th><th>活力</th><th>判定</th></tr>";
+      table.appendChild(thead);
+      const tbody = document.createElement("tbody");
+      rows.forEach((r) => {
+        const tr = document.createElement("tr");
+        tr.style.borderTop = "1px solid rgba(255,255,255,.06)";
+        const cells = [r.addr.slice(0, 6) + "…" + r.addr.slice(-4)];
+        if (!r.config) {
+          cells.push("-", "-", "-", "-", "-", "-");
+        } else {
+          const p = r.profile;
+          cells.push(
+            p.role.replace(/ .*$/, ""),
+            r.config.stageName,
+            Math.round(r.config.energy).toLocaleString(),
+            p.scores[0].value, p.scores[1].value, p.scores[3].value
+          );
+        }
+        cells.forEach((c, i) => {
+          const td = document.createElement("td");
+          td.style.padding = "6px";
+          td.style.color = "rgba(255,255,255,.75)";
+          td.textContent = c;
+          tr.appendChild(td);
+        });
+        const vd = document.createElement("td");
+        vd.style.padding = "6px";
+        vd.style.color = r.verdict.color;
+        vd.style.fontFamily = "-apple-system, 'PingFang SC', sans-serif";
+        vd.textContent = r.verdict.text;
+        tr.appendChild(vd);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      box.appendChild(table);
+      document.getElementById("sybilCsv").style.display = "inline-block";
+    }
+
+    function exportSybilCsv() {
+      const rows = app.sybilRows || [];
+      if (!rows.length) return;
+      const head = "address,archetype,stage,energy,wealth,footprint,vitality,verdict";
+      const lines = rows.map((r) => {
+        if (!r.config) return [r.addr, "查询失败", "-", "-", "-", "-", "-", "查询失败"].join(",");
+        const p = r.profile;
+        return [
+          r.addr,
+          '"' + p.role.replace(/"/g, "") + '"',
+          r.config.stageName,
+          Math.round(r.config.energy),
+          p.scores[0].value, p.scores[1].value, p.scores[3].value,
+          r.verdict.text
+        ].join(",");
+      });
+      const blob = new Blob(["﻿" + [head, ...lines].join("\n")],
+        { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "chainlife-sybil-check.csv";
+      a.click();
+      showToast("CSV 已导出（" + rows.length + " 个地址）");
+    }
+
     function showError(error) {
       console.error(error);
 
@@ -3768,6 +3916,19 @@
 
         document.getElementById("shareButton")
           .addEventListener("click", shareCard);
+
+        document.getElementById("sybilButton")
+          .addEventListener("click", () => {
+            document.getElementById("sybilOverlay").style.display = "block";
+          });
+        document.getElementById("sybilClose")
+          .addEventListener("click", () => {
+            document.getElementById("sybilOverlay").style.display = "none";
+          });
+        document.getElementById("sybilRun")
+          .addEventListener("click", runSybil);
+        document.getElementById("sybilCsv")
+          .addEventListener("click", exportSybilCsv);
 
         document.getElementById("mintButton")
           .addEventListener("click", mintNFT);
