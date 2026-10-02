@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#05060b" />
-  <title>链上生命 · On-Chain Life</title>
+  <title id="pageTitle">链上生命 · On-Chain Life</title>
 
   <style>
     :root {
@@ -542,6 +542,42 @@
         font-size: 11px;
       }
     }
+
+    .lang-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 80;
+      display: flex;
+      gap: 2px;
+      padding: 3px;
+      background: rgba(10, 13, 24, .62);
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 999px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .lang-toggle span {
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: .06em;
+      color: rgba(255, 255, 255, .55);
+      cursor: pointer;
+      transition: all .25s ease;
+      user-select: none;
+    }
+
+    .lang-toggle span:hover {
+      color: #fff;
+    }
+
+    .lang-toggle span.active {
+      color: #fff;
+      background: rgba(0, 166, 255, .28);
+      box-shadow: inset 0 0 10px rgba(0, 166, 255, .25);
+    }
   </style>
 </head>
 
@@ -549,20 +585,25 @@
   <main id="app">
     <div id="canvas-wrap"></div>
 
+    <div id="langToggle" class="lang-toggle">
+      <span id="langZh" class="active">中文</span>
+      <span id="langEn">EN</span>
+    </div>
+
     <div id="loading" class="loading">
-      INITIALIZING DIGITAL ORGANISM
+      <span id="loadingText">INITIALIZING DIGITAL ORGANISM</span>
     </div>
 
     <div class="ui">
       <section class="glass panel">
         <div class="header">
           <div>
-            <div class="eyebrow">ON-CHAIN LIFE / ARBITRUM ONE</div>
-            <h1>链上生命</h1>
+            <div class="eyebrow" id="eyebrowText">ON-CHAIN LIFE / ARBITRUM ONE</div>
+            <h1 id="h1Title">链上生命</h1>
           </div>
 
           <div class="address-preview">
-            <div class="address-label">ADDRESS SIGNATURE</div>
+            <div class="address-label" id="addressLabel">ADDRESS SIGNATURE</div>
             <span id="addressPreview">0x742d...8f44e</span>
           </div>
         </div>
@@ -618,11 +659,11 @@
       </section>
 
       <section class="glass stats">
-        <div class="stats-title">LIFE SIGNATURE</div>
+        <div class="stats-title" id="statsTitle">LIFE SIGNATURE</div>
 
         <div class="vitality-block">
           <div class="vitality-head">
-            <span class="stat-label">Vitality</span>
+            <span class="stat-label" id="lblVitality">Vitality</span>
             <span id="vitality" class="stat-value">--</span>
           </div>
           <div class="vitality-bar">
@@ -634,51 +675,51 @@
 
         <div class="stats-grid">
           <div>
-            <div class="stat-label">Pulse</div>
+            <div class="stat-label" id="lblPulse">Pulse</div>
             <div id="pulse" class="stat-value">--</div>
           </div>
 
           <div>
-            <div class="stat-label">Stage</div>
+            <div class="stat-label" id="lblStage">Stage</div>
             <div id="particleCount" class="stat-value">--</div>
           </div>
 
           <div>
-            <div class="stat-label">Balance</div>
+            <div class="stat-label" id="lblBalance">Balance</div>
             <div id="balance" class="stat-value">--</div>
           </div>
 
           <div>
-            <div class="stat-label">Chain</div>
+            <div class="stat-label" id="lblChain">Chain</div>
             <div id="chainLabel" class="stat-value">ARB ONE</div>
           </div>
 
           <div>
-            <div class="stat-label">Tx</div>
+            <div class="stat-label" id="lblTx">Tx</div>
             <div id="txCount" class="stat-value">--</div>
           </div>
 
           <div>
-            <div class="stat-label">Tokens</div>
+            <div class="stat-label" id="lblTokens">Tokens</div>
             <div id="tokenCount" class="stat-value">--</div>
           </div>
 
           <div>
-            <div class="stat-label">Energy</div>
+            <div class="stat-label" id="lblEnergy">Energy</div>
             <div id="energyVal" class="stat-value">--</div>
           </div>
 
           <div>
-            <div class="stat-label">Theme</div>
+            <div class="stat-label" id="lblTheme">Theme</div>
             <div id="themeLabel" class="stat-value">--</div>
           </div>
         </div>
       </section>
 
-      <div class="hint">DRAG TO ROTATE · SCROLL TO ZOOM</div>
+      <div class="hint" id="hintText">DRAG TO ROTATE · SCROLL TO ZOOM</div>
 
       <section class="glass analysis" id="analysisPanel" style="position:absolute;right:26px;bottom:26px;width:240px;max-height:70vh;overflow-y:auto;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
-        <div style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:12px;">Wallet Profile</div>
+        <div id="profileHeader" style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:12px;">Wallet Profile</div>
         <div id="walletRole" style="font-size:14px;margin-bottom:8px;">—</div>
         <div id="walletTags" style="font-size:10px;line-height:1.6;">—</div>
         <div id="walletScores" style="margin-top:10px;"></div>
@@ -689,7 +730,7 @@
       </section>
 
       <section class="glass bio" id="bioPanel" style="position:absolute;left:26px;bottom:26px;width:300px;max-height:52vh;overflow-y:auto;padding:16px;border-radius:20px;pointer-events:auto;opacity:0;transition:opacity 1.5s ease;">
-        <div style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:10px;">Life Story · AI 生平</div>
+        <div id="bioHeader" style="color:var(--muted);font-size:9px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:10px;">Life Story · AI 生平</div>
         <div id="bioName" style="font-size:15px;margin-bottom:6px;">—</div>
         <div id="bioTraits" style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:10px;">—</div>
         <div id="bioStory" style="font-size:11px;line-height:1.7;color:rgba(255,255,255,.85);min-height:34px;"></div>
@@ -704,10 +745,10 @@
     <div id="sybilOverlay" style="display:none;position:fixed;inset:0;z-index:60;background:rgba(3,4,8,.82);backdrop-filter:blur(10px);">
       <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(860px,92vw);max-height:82vh;overflow-y:auto;padding:26px;border-radius:24px;background:rgba(10,13,24,.95);border:1px solid rgba(255,255,255,.12);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <div style="font-size:15px;">Chain Life 身份筛查 · Sybil Check</div>
+          <div id="sybilTitle" style="font-size:15px;">Chain Life 身份筛查 · Sybil Check</div>
           <button id="sybilClose" style="background:none;border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;">✕</button>
         </div>
-        <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:10px;">
+        <div id="sybilDesc" style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:10px;">
           粘贴 Arbitrum 地址（每行一个，最多 20 个）——按链上生命阶段与评分判断钱包真实性，辅助空投女巫过滤。生命阶段与评分全部来自真实链上数据。
         </div>
         <textarea id="sybilInput" rows="6" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font-family:monospace;font-size:11px;padding:10px;" placeholder="0x…&#10;0x…"></textarea>
@@ -776,6 +817,293 @@
     };
 
     window.app = app; // 调试/自动化入口
+
+    // ══════════ i18n · 中文/English ══════════
+    const I18N = {
+      zh: {
+        title: "链上生命 · On-Chain Life",
+        h1: "链上生命",
+        loading: "正在初始化数字生命体",
+        eyebrow: "链上生命 / ARBITRUM ONE",
+        addressLabel: "地址签名",
+        addressPlaceholder: "输入任意 EVM 地址",
+        btnGenerate: "生成生命体",
+        btnConnect: "连接钱包",
+        btnMint: "铸造 NFT",
+        btnRandom: "随机生命体",
+        btnCopy: "复制地址",
+        btnShare: "分享卡片",
+        btnSybil: "身份筛查",
+        statsTitle: "生命特征",
+        lblVitality: "生命力",
+        lblPulse: "脉动",
+        lblStage: "阶段",
+        lblBalance: "余额",
+        lblChain: "链",
+        lblTx: "交易",
+        lblTokens: "代币",
+        lblEnergy: "能量",
+        lblTheme: "主题",
+        profileHeader: "钱包画像",
+        bioHeader: "生命故事 · AI 生平",
+        sybilTitle: "Chain Life 身份筛查 · Sybil Check",
+        sybilDesc: "粘贴 Arbitrum 地址（每行一个，最多 20 个）——按链上生命阶段与评分判断钱包真实性，辅助空投女巫过滤。生命阶段与评分全部来自真实链上数据。",
+        sybilRun: "开始筛查",
+        sybilCsv: "导出 CSV",
+        hint: "拖动旋转 · 滚轮缩放",
+        vitalityUnit: "% 生命力",
+        statsContract: "合约",
+        statsSim: "— 模拟",
+        tokensUnit: " 种",
+        statsRealBal: "真实余额",
+        statsReal: "真实链上数据",
+        statsSimData: "模拟数据",
+        holdingsTitle: "HOLDINGS · 资产环",
+        statusLive: "生命体活跃 · ARBITRUM ONE",
+        statusSim: "生命体活跃 · 模拟",
+        statusInvalid: "地址无效",
+        toastGenerated: "生命体已生成",
+        toastGenFailed: "生成失败",
+        toastNoMetaMask: "请安装 MetaMask 钱包",
+        toastConnectFailed: "连接失败，请重试",
+        toastCopied: "地址已复制",
+        toastCopyFailed: "复制失败，请手动复制",
+        toastGenFirst: "请先生成生命体",
+        toastEthersMissing: "ethers 库未加载，请刷新重试",
+        connecting: "连接中...",
+        minting: "铸造中...",
+        toastMinted: "NFT 铸造成功！一钱包一生命体",
+        toastMintFailed: "铸造失败: ",
+        bioReading: "AI 正在阅读链上记录…",
+        bioNoHistory: "该钱包没有可读的转账与交易记录，故事留白。",
+        bioComingSoon: "AI 传记服务即将上线（本地开发已可用）",
+        bioFromChain: "由链上事实生成 · AI",
+        bioFailed: "传记生成失败，稍后重试",
+        nameless: "无名者",
+        huntsTitle: "GMX HUNTS · 捕猎记录",
+        feedBtn: "喂食",
+        toastEvolved: "进化成功！阶段 → ",
+        toastDigesting: "消化中… 1 小时后再喂",
+        toastMintFirst: "先铸造 NFT，再喂食",
+        toastFeedFailed: "喂食失败: ",
+        toastCardGen: "正在生成卡片…",
+        toastCardDone: "卡片已下载 · 链接已复制",
+        toastCardFailed: "卡片生成失败: ",
+        lifeform: "生命体",
+        energy: "能量",
+        cardFooter: "活着的链上生命体 · Arbitrum",
+        verdictGenesis: "创世者 ⦿",
+        verdictContract: "合约体",
+        verdictRealStrong: "真实生命 ✓",
+        verdictReal: "真实生命",
+        verdictLarva: "幼体",
+        verdictSuspect: "可疑新号 ⚠",
+        sybilNoAddr: "请输入至少一个有效地址",
+        sybilScanning: "筛查中（",
+        sybilScanningSuffix: " 个地址，实时链上数据）…",
+        sybilQueryFailed: "查询失败",
+        thArchetype: "原型",
+        thStage: "阶段",
+        thEnergy: "能量",
+        thWealth: "财富",
+        thFootprint: "足迹",
+        thVitality: "活力",
+        thVerdict: "判定",
+        csvExported: "CSV 已导出（",
+        csvExportedSuffix: " 个地址）",
+        errorDesc: "页面初始化失败。通常是 CDN 无法访问、浏览器 WebGL 被禁用，或者直接打开本地文件导致模块加载受限。",
+        errorHint: "请使用本地服务器打开，例如："
+      },
+      en: {
+        title: "Chain Life · On-Chain Life",
+        h1: "Chain Life",
+        loading: "INITIALIZING DIGITAL ORGANISM",
+        eyebrow: "ON-CHAIN LIFE / ARBITRUM ONE",
+        addressLabel: "ADDRESS SIGNATURE",
+        addressPlaceholder: "Paste any EVM address",
+        btnGenerate: "Generate",
+        btnConnect: "Connect",
+        btnMint: "Mint NFT",
+        btnRandom: "Random",
+        btnCopy: "Copy",
+        btnShare: "Share Card",
+        btnSybil: "Sybil Check",
+        statsTitle: "LIFE SIGNATURE",
+        lblVitality: "Vitality",
+        lblPulse: "Pulse",
+        lblStage: "Stage",
+        lblBalance: "Balance",
+        lblChain: "Chain",
+        lblTx: "Tx",
+        lblTokens: "Tokens",
+        lblEnergy: "Energy",
+        lblTheme: "Theme",
+        profileHeader: "Wallet Profile",
+        bioHeader: "Life Story · AI",
+        sybilTitle: "Chain Life Sybil Check",
+        sybilDesc: "Paste Arbitrum addresses (one per line, up to 20) — wallet authenticity judged by on-chain life stage & scores, built for airdrop sybil filtering. Every stage and score comes from real on-chain data.",
+        sybilRun: "Run Check",
+        sybilCsv: "Export CSV",
+        hint: "DRAG TO ROTATE · SCROLL TO ZOOM",
+        vitalityUnit: "% vitality",
+        statsContract: "Contract",
+        statsSim: "— Simulated",
+        tokensUnit: "",
+        statsRealBal: "real balance",
+        statsReal: "Real on-chain data",
+        statsSimData: "Simulated data",
+        holdingsTitle: "HOLDINGS · Asset Ring",
+        statusLive: "LIFEFORM ACTIVE · ARBITRUM ONE",
+        statusSim: "LIFEFORM ACTIVE · SIMULATED",
+        statusInvalid: "INVALID ADDRESS",
+        toastGenerated: "Lifeform generated",
+        toastGenFailed: "Generation failed",
+        toastNoMetaMask: "Please install MetaMask",
+        toastConnectFailed: "Connection failed, please retry",
+        toastCopied: "Address copied",
+        toastCopyFailed: "Copy failed, copy manually",
+        toastGenFirst: "Generate a lifeform first",
+        toastEthersMissing: "ethers failed to load, refresh and retry",
+        connecting: "Connecting...",
+        minting: "Minting...",
+        toastMinted: "NFT minted! One wallet, one lifeform",
+        toastMintFailed: "Mint failed: ",
+        bioReading: "AI is reading on-chain records…",
+        bioNoHistory: "This wallet has no readable transfer history — its story is left blank.",
+        bioComingSoon: "AI biography service coming soon (available locally)",
+        bioFromChain: "Generated from on-chain facts · AI",
+        bioFailed: "Biography generation failed, retry later",
+        nameless: "The Nameless One",
+        huntsTitle: "GMX HUNTS · Live Trades",
+        feedBtn: "Feed",
+        toastEvolved: "Evolved! Stage → ",
+        toastDigesting: "Digesting… feed again in 1 hour",
+        toastMintFirst: "Mint the NFT first, then feed",
+        toastFeedFailed: "Feed failed: ",
+        toastCardGen: "Generating card…",
+        toastCardDone: "Card downloaded · link copied",
+        toastCardFailed: "Card generation failed: ",
+        lifeform: "Lifeform",
+        energy: "Energy",
+        cardFooter: "A living onchain organism · Arbitrum",
+        verdictGenesis: "The Genesis ⦿",
+        verdictContract: "Contract Entity",
+        verdictRealStrong: "Real Life ✓",
+        verdictReal: "Real Life",
+        verdictLarva: "Larva",
+        verdictSuspect: "Suspicious Newcomer ⚠",
+        sybilNoAddr: "Enter at least one valid address",
+        sybilScanning: "Scanning (",
+        sybilScanningSuffix: " addresses, live on-chain data)…",
+        sybilQueryFailed: "Query failed",
+        thArchetype: "Archetype",
+        thStage: "Stage",
+        thEnergy: "Energy",
+        thWealth: "Wealth",
+        thFootprint: "Footprint",
+        thVitality: "Vitality",
+        thVerdict: "Verdict",
+        csvExported: "CSV exported (",
+        csvExportedSuffix: " addresses)",
+        errorDesc: "Page failed to initialize. Usually the CDN is unreachable, browser WebGL is disabled, or the file was opened directly without a local server.",
+        errorHint: "Open it with a local server, e.g.:"
+      }
+    };
+
+    let LANG = (() => {
+      try { return localStorage.getItem("cl-lang") || "zh"; }
+      catch { return "zh"; }
+    })();
+
+    const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.zh[k] || k;
+
+    const STAGE9_ZH = ["原始", "初现", "觉醒", "成长", "蓬勃", "成熟", "炽烈", "璀璨", "远古"];
+    const stageName9 = (i) => (LANG === "en" ? STAGES9[i] : STAGE9_ZH[i]);
+
+    const THEME_EN = {
+      "极光": "Aurora", "熔岩": "Lava", "霓虹": "Neon", "深海": "Abyss",
+      "翡翠": "Jade", "暮光": "Dusk", "星云": "Nebula", "极夜": "Polar Night",
+      "晨霞": "Sunrise", "薄荷": "Mint", "紫金": "Amethyst", "靛蓝": "Indigo",
+      "创世金": "Genesis Gold"
+    };
+    const themeName = (n) => (LANG === "en" ? (THEME_EN[n] || n) : n);
+
+    function setLang(lang) {
+      if (lang !== "zh" && lang !== "en") return;
+      LANG = lang;
+      try { localStorage.setItem("cl-lang", lang); } catch {}
+      document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+      applyLang();
+    }
+
+    function applyLang() {
+      const el = (id) => document.getElementById(id);
+      document.title = t("title");
+      const zhBtn = el("langZh"), enBtn = el("langEn");
+      if (zhBtn) zhBtn.classList.toggle("active", LANG === "zh");
+      if (enBtn) enBtn.classList.toggle("active", LANG === "en");
+
+      el("loadingText").textContent = t("loading");
+      el("eyebrowText").textContent = t("eyebrow");
+      el("h1Title").textContent = t("h1");
+      el("addressLabel").textContent = t("addressLabel");
+      el("addressInput").placeholder = t("addressPlaceholder");
+      el("generateButton").textContent = t("btnGenerate");
+      el("connectButton").textContent = t("btnConnect");
+      el("mintButton").textContent = t("btnMint");
+      el("randomButton").textContent = t("btnRandom");
+      el("copyButton").textContent = t("btnCopy");
+      el("shareButton").textContent = t("btnShare");
+      el("sybilButton").textContent = t("btnSybil");
+      el("hintText").textContent = t("hint");
+      el("statsTitle").textContent = t("statsTitle");
+      el("lblVitality").textContent = t("lblVitality");
+      el("lblPulse").textContent = t("lblPulse");
+      el("lblStage").textContent = t("lblStage");
+      el("lblBalance").textContent = t("lblBalance");
+      el("lblChain").textContent = t("lblChain");
+      el("lblTx").textContent = t("lblTx");
+      el("lblTokens").textContent = t("lblTokens");
+      el("lblEnergy").textContent = t("lblEnergy");
+      el("lblTheme").textContent = t("lblTheme");
+      el("profileHeader").textContent = t("profileHeader");
+      el("bioHeader").textContent = t("bioHeader");
+      el("sybilTitle").textContent = t("sybilTitle");
+      el("sybilDesc").textContent = t("sybilDesc");
+      el("sybilRun").textContent = t("sybilRun");
+      el("sybilCsv").textContent = t("sybilCsv");
+
+      // 阶段点阵 tooltip 按语言刷新
+      const track = el("stageTrack");
+      if (track) {
+        [...track.children].forEach((dot, i) => { dot.title = stageName9(i); });
+      }
+
+      // 动态面板按当前语言重绘
+      if (app.config && app.address) {
+        updateStats(app.address, app.config, null);
+        renderStageDots(app.config.targetStage);
+      }
+      renderHuntFeed();
+      if (app.sybilRows) renderSybilTable();
+
+      // AI 生平：静态提示直接换语言；已有内容则按新语言重新生成
+      const stEl = el("bioStatus");
+      const st = (stEl && stEl.textContent) || "";
+      if (st && app.config && app.address &&
+          st !== I18N.zh.bioReading && st !== I18N.en.bioReading) {
+        if (st === I18N.zh.bioNoHistory || st === I18N.en.bioNoHistory) {
+          stEl.textContent = t("bioNoHistory");
+        } else if (st === I18N.zh.bioComingSoon || st === I18N.en.bioComingSoon) {
+          stEl.textContent = t("bioComingSoon");
+        } else {
+          loadBioStory(app.address, app.config, app.onchain || null, app.config.assets);
+        }
+      }
+    }
+
+    document.getElementById("langZh").onclick = () => setLang("zh");
+    document.getElementById("langEn").onclick = () => setLang("en");
 
     function hashString(value) {
       let h1 = 0x811c9dc5;
@@ -2267,15 +2595,15 @@
         shortAddress(address);
 
       document.getElementById("vitality").textContent =
-        config.vitality + "% vitality";
+        config.vitality + t("vitalityUnit");
 
       document.getElementById("pulse").textContent =
         config.pulse.toFixed(2) + " Hz";
 
       document.getElementById("particleCount").textContent =
-        (config.stageName || '—') + ' · ' +
+        (stageName9(config.targetStage) || '—') + ' · ' +
         (config.isContract
-          ? '合约'
+          ? t("statsContract")
           : config.simTx.toLocaleString() + ' tx');
 
       const bar = document.getElementById("vitalityBar");
@@ -2287,17 +2615,17 @@
       if (balanceEl) {
         balanceEl.textContent = config.real
           ? "Ξ " + config.balanceEth.toFixed(4)
-          : "— 模拟";
+          : t("statsSim");
       }
 
       // 扩展数据维度：Tx / 持仓 / 能量 / 主题
       const txEl = document.getElementById("txCount");
       if (txEl) {
-        txEl.textContent = config.isContract ? "合约" : (config.simTx || 0).toLocaleString();
+        txEl.textContent = config.isContract ? t("statsContract") : (config.simTx || 0).toLocaleString();
       }
       const tokEl = document.getElementById("tokenCount");
       if (tokEl) {
-        tokEl.textContent = (config.assets || []).length + " 种";
+        tokEl.textContent = (config.assets || []).length + t("tokensUnit");
       }
       const enEl = document.getElementById("energyVal");
       if (enEl) {
@@ -2305,14 +2633,14 @@
       }
       const thEl = document.getElementById("themeLabel");
       if (thEl) {
-        thEl.textContent = config.palette || "—";
+        thEl.textContent = themeName(config.palette) || "—";
       }
 
       const status = document.getElementById("statusText");
       if (status) {
         status.textContent = config.real
-          ? "LIFEFORM ACTIVE · ARBITRUM ONE"
-          : "LIFEFORM ACTIVE · SIMULATED";
+          ? t("statusLive")
+          : t("statusSim");
       }
 
       // Wallet profile panel
@@ -2380,9 +2708,9 @@
         document.getElementById('ageLabel').textContent =
           profile.age +
           (config.isContract
-            ? ' · 合约 · 真实余额'
+            ? ' · ' + t("statsContract") + ' · ' + t("statsRealBal")
             : ' · ' + profile.tx.toLocaleString() + ' tx · ' +
-              (config.real ? '真实链上数据' : '模拟数据'));
+              (config.real ? t("statsReal") : t("statsSimData")));
 
         // 真实持仓列表（资产环）
         const assetEl = document.getElementById('assetList');
@@ -2391,7 +2719,7 @@
           const assets = config.assets || [];
           if (assets.length) {
             const title = document.createElement('div');
-            title.textContent = 'HOLDINGS · 资产环';
+            title.textContent = t("holdingsTitle");
             title.style.cssText =
               'color:rgba(255,255,255,.25);font-size:8px;' +
               'letter-spacing:.15em;margin-bottom:5px;';
@@ -2845,7 +3173,7 @@
         if (cs !== app.lastStageTick || done !== app.lastStageDone) {
           app.lastStageTick = cs;
           app.lastStageDone = done;
-          document.getElementById('particleCount').textContent = done ? (app.stageName||'') : ((stages[cs]||'') + ' → ' + (app.stageName||''));
+          document.getElementById('particleCount').textContent = done ? (app.stageName||'') : ((stageName9(cs)||'') + ' → ' + (app.stageName||''));
           renderStageDots(cs);
         }
         if (done && app.evolutionStart) {
@@ -2928,12 +3256,12 @@
       if (!validAddress(address)) {
         input.style.borderColor = "rgba(255,80,110,.85)";
         document.getElementById("statusText").textContent =
-          "INVALID ADDRESS";
+          t("statusInvalid");
 
         setTimeout(() => {
           input.style.borderColor = "";
           document.getElementById("statusText").textContent =
-            "LIFEFORM ACTIVE";
+            t("statusLive");
         }, 1200);
 
         return;
@@ -2942,10 +3270,10 @@
       try {
         await createOrganism(address);
         saveHistory(address);
-        showToast("生命体已生成");
+        showToast(t("toastGenerated"));
       } catch (error) {
         console.error(error);
-        showToast("生成失败");
+        showToast(t("toastGenFailed"));
       }
     }
 
@@ -2995,7 +3323,7 @@
     // ── 连接钱包 ──
     async function connectWallet() {
       if (typeof window.ethereum === "undefined") {
-        showToast("请安装 MetaMask 钱包");
+        showToast(t("toastNoMetaMask"));
         return;
       }
 
@@ -3009,7 +3337,7 @@
         }
       } catch (error) {
         console.error(error);
-        showToast("连接失败，请重试");
+        showToast(t("toastConnectFailed"));
       }
     }
 
@@ -3019,9 +3347,9 @@
 
       try {
         await navigator.clipboard.writeText(value);
-        showToast("地址已复制");
+        showToast(t("toastCopied"));
       } catch {
-        showToast("复制失败，请手动复制");
+        showToast(t("toastCopyFailed"));
       }
     }
 
@@ -3043,18 +3371,18 @@
       const btn = document.getElementById("mintButton");
       if (!btn) return;
 
-      if (!config) { showToast("请先生成生命体"); return; }
+      if (!config) { showToast(t("toastGenFirst")); return; }
       if (typeof window.ethereum === "undefined") {
-        showToast("请安装 MetaMask 钱包");
+        showToast(t("toastNoMetaMask"));
         return;
       }
       if (typeof window.ethers === "undefined") {
-        showToast("ethers 库未加载，请刷新重试");
+        showToast(t("toastEthersMissing"));
         return;
       }
 
       btn.disabled = true;
-      btn.textContent = "连接中...";
+      btn.textContent = t("connecting");
 
       try {
         try {
@@ -3075,7 +3403,7 @@
           });
         }
 
-        btn.textContent = "铸造中...";
+        btn.textContent = t("minting");
 
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
@@ -3109,7 +3437,7 @@
         app.nftMinted = true;
         renderHuntFeed();
 
-        showToast("NFT 铸造成功！一钱包一生命体");
+        showToast(t("toastMinted"));
         console.log("NFT tx:", tx.hash);
         console.log("NFT 查看:", "https://sepolia.arbiscan.io/nft/" +
           CHAINLIFE_NFT.address + "/" +
@@ -3117,11 +3445,11 @@
       } catch (error) {
         console.error(error);
         const msg = error.shortMessage || error.message || String(error);
-        showToast("铸造失败: " + msg.slice(0, 60));
+        showToast(t("toastMintFailed") + msg.slice(0, 60));
       }
 
       btn.disabled = false;
-      btn.textContent = "铸造 NFT";
+      btn.textContent = t("btnMint");
     }
 
     // ── AI 生平 + GMX 捕猎进化（Living NFT 前端联动）──
@@ -3136,7 +3464,7 @@
       document.getElementById("bioTraits").textContent = "";
       document.getElementById("bioStory").textContent = "";
       document.getElementById("bioEpitaph").textContent = "";
-      document.getElementById("bioStatus").textContent = "AI 正在阅读链上记录…";
+      document.getElementById("bioStatus").textContent = t("bioReading");
 
       const [transfers, gmxTrades] = await Promise.all([
         fetchTransferHistory(address),
@@ -3152,14 +3480,14 @@
       // 创世者例外：它的历史在另一条链上，由彩蛋事实讲述
       if (!gmxTrades.length && !transfers.length && !config.satoshi) {
         document.getElementById("bioStatus").textContent =
-          "该钱包没有可读的转账与交易记录，故事留白。";
+          t("bioNoHistory");
         return;
       }
 
       const isLocal = location.hostname === "127.0.0.1" || location.hostname === "localhost";
       if (!isLocal && !CHAINLIFE_WORKER_URL) {
         document.getElementById("bioStatus").textContent =
-          "AI 传记服务即将上线（本地开发已可用）";
+          t("bioComingSoon");
         return;
       }
 
@@ -3179,7 +3507,7 @@
         if (!bio || token !== app.bioToken) return;
 
         document.getElementById("bioName").textContent =
-          bio.name || "The Nameless One";
+          bio.name || t("nameless");
         // traits 用胶囊标签渲染，避免长文本挤压折叠
         const traitsEl = document.getElementById("bioTraits");
         traitsEl.textContent = "";
@@ -3196,7 +3524,7 @@
         document.getElementById("bioEpitaph").textContent =
           bio.epitaph ? "「" + bio.epitaph + "」" : "";
         document.getElementById("bioStatus").textContent =
-          "由链上事实生成 · AI";
+          t("bioFromChain");
 
         // 类型机逐字输出生平
         const storyEl = document.getElementById("bioStory");
@@ -3210,7 +3538,7 @@
       } catch (e) {
         if (token === app.bioToken) {
           document.getElementById("bioStatus").textContent =
-            "传记生成失败，稍后重试";
+            t("bioFailed");
         }
       }
     }
@@ -3228,7 +3556,7 @@
       box.style.display = "block";
 
       const title = document.createElement("div");
-      title.textContent = "GMX HUNTS · 捕猎记录";
+      title.textContent = t("huntsTitle");
       title.style.cssText =
         "color:rgba(255,255,255,.25);font-size:8px;letter-spacing:.15em;margin-bottom:6px;";
       box.appendChild(title);
@@ -3244,7 +3572,7 @@
           " · $" + Math.round(parseFloat(t.sizeDeltaUsd || 0) / 1e30) +
           (t.isLong ? " LONG" : " SHORT");
         const feedBtn = document.createElement("button");
-        feedBtn.textContent = "喂食";
+        feedBtn.textContent = t("feedBtn");
         feedBtn.style.cssText =
           "font-size:9px;padding:2px 8px;border-radius:8px;border:1px solid rgba(0,166,255,.4);" +
           "background:rgba(0,166,255,.1);color:#7fd0ff;cursor:pointer;";
@@ -3257,9 +3585,9 @@
 
     async function feedFromGmxTrade(txHash) {
       const config = app.config;
-      if (!config) { showToast("请先生成生命体"); return; }
-      if (typeof window.ethereum === "undefined") { showToast("请安装 MetaMask"); return; }
-      if (typeof window.ethers === "undefined") { showToast("ethers 未加载，请刷新"); return; }
+      if (!config) { showToast(t("toastGenFirst")); return; }
+      if (typeof window.ethereum === "undefined") { showToast(t("toastNoMetaMask")); return; }
+      if (typeof window.ethers === "undefined") { showToast(t("toastEthersMissing")); return; }
 
       try {
         await window.ethereum.request({
@@ -3284,23 +3612,23 @@
 
         const p = await contract.lifeParams(tokenId);
         app.pulseBoost = 1; // bloom 爆发
-        showToast("进化成功！阶段 → " + STAGES9[Number(p.stage)] +
+        showToast(t("toastEvolved") + stageName9(Number(p.stage)) +
           " · XP " + p.xp);
       } catch (e) {
         const msg = (e.shortMessage || e.message || String(e));
         showToast(msg.includes("digesting")
-          ? "消化中… 1 小时后再喂"
+          ? t("toastDigesting")
           : msg.includes("not minted")
-            ? "先铸造 NFT，再喂食"
-            : "喂食失败: " + msg.slice(0, 50));
+            ? t("toastMintFirst")
+            : t("toastFeedFailed") + msg.slice(0, 50));
       }
     }
 
     // ── 分享卡片：canvas 渲染生命体卡片（下载 PNG + 复制深链接）──
     function shareCard() {
       const config = app.config;
-      if (!config || !app.address) { showToast("请先生成生命体"); return; }
-      showToast("正在生成卡片…");
+      if (!config || !app.address) { showToast(t("toastGenFirst")); return; }
+      showToast(t("toastCardGen"));
       try {
         const card = drawShareCard();
         // 下载
@@ -3312,10 +3640,10 @@
         navigator.clipboard?.writeText(
           "https://montreefork.github.io/chain-life/?wallet=" + app.address
         ).catch(() => {});
-        showToast("卡片已下载 · 链接已复制");
+        showToast(t("toastCardDone"));
       } catch (e) {
         console.error("shareCard:", e);
-        showToast("卡片生成失败: " + String(e.message || e).slice(0, 120));
+        showToast(t("toastCardFailed") + String(e.message || e).slice(0, 120));
       }
     }
 
@@ -3325,7 +3653,7 @@
       if (!config || !profile) return null;
       const bioName = (document.getElementById("bioName")?.textContent || "").trim();
       const name = bioName && !bioName.includes("·") && bioName !== "—"
-        ? bioName : STAGES9[config.targetStage] + " Lifeform";
+        ? bioName : stageName9(config.targetStage) + " " + t("lifeform");
 
       const W = 1200, H = 630;
       const c = document.createElement("canvas");
@@ -3404,7 +3732,7 @@
       ctx.fillStyle = "rgba(255,255,255,0.75)";
       ctx.font = "400 26px -apple-system, 'PingFang SC', sans-serif";
       ctx.fillText(
-        STAGES9[config.targetStage] + " · Energy " +
+        stageName9(config.targetStage) + " · " + t("energy") + " " +
         Math.round(config.energy) + " · " + profile.role,
         620, 330
       );
@@ -3417,19 +3745,76 @@
 
       ctx.fillStyle = "rgba(255,255,255,0.22)";
       ctx.font = "400 16px -apple-system, 'PingFang SC', sans-serif";
-      ctx.fillText("A living onchain organism · Arbitrum", 620, 560);
+      ctx.fillText(t("cardFooter"), 620, 560);
 
       return c;
     }
 
     // ── 身份筛查（Sybil Check）：批量钱包 → 生命阶段/评分 → 真实性判定 ──
     function sybilVerdict(config) {
-      if (config.satoshi) return { text: "创世者 ⦿", color: "#ffb347" };
-      if (config.isContract) return { text: "合约体", color: "#5ce1e6" };
-      if (config.targetStage >= 5) return { text: "真实生命 ✓", color: "#8be8a0" };
-      if (config.targetStage >= 2) return { text: "真实生命", color: "#a8d8b0" };
-      if ((config.simTx || 0) > 0) return { text: "幼体", color: "#ffd166" };
-      return { text: "可疑新号 ⚠", color: "#ff5c5c" };
+      if (config.satoshi) return { text: t("verdictGenesis"), color: "#ffb347" };
+      if (config.isContract) return { text: t("verdictContract"), color: "#5ce1e6" };
+      if (config.targetStage >= 5) return { text: t("verdictRealStrong"), color: "#8be8a0" };
+      if (config.targetStage >= 2) return { text: t("verdictReal"), color: "#a8d8b0" };
+      if ((config.simTx || 0) > 0) return { text: t("verdictLarva"), color: "#ffd166" };
+      return { text: t("verdictSuspect"), color: "#ff5c5c" };
+    }
+
+    function renderSybilTable() {
+      const rows = app.sybilRows || [];
+      const box = document.getElementById("sybilResults");
+      if (!box || !rows.length) return;
+
+      box.textContent = "";
+      const table = document.createElement("table");
+      table.style.cssText =
+        "width:100%;border-collapse:collapse;font-size:10px;font-family:monospace;";
+      const thead = document.createElement("thead");
+      thead.innerHTML =
+        '<tr style="color:rgba(255,255,255,.35);text-align:left;">' +
+        "<th style=\"padding:6px;\">ADDRESS</th>" +
+        "<th>" + t("thArchetype") + "</th><th>" + t("thStage") + "</th>" +
+        "<th>" + t("thEnergy") + "</th><th>" + t("thWealth") + "</th>" +
+        "<th>" + t("thFootprint") + "</th><th>" + t("thVitality") + "</th>" +
+        "<th>" + t("thVerdict") + "</th></tr>";
+      table.appendChild(thead);
+      const tbody = document.createElement("tbody");
+      rows.forEach((r) => {
+        const tr = document.createElement("tr");
+        tr.style.borderTop = "1px solid rgba(255,255,255,.06)";
+        const cells = [r.addr.slice(0, 6) + "…" + r.addr.slice(-4)];
+        if (!r.config) {
+          cells.push("-", "-", "-", "-", "-", "-");
+        } else {
+          // 按当前语言实时重算画像，保证切换语言后表格同步
+          const p = generateWalletProfile(r.config);
+          cells.push(
+            p.role,
+            stageName9(r.config.targetStage),
+            Math.round(r.config.energy).toLocaleString(),
+            p.scores[0].value, p.scores[1].value, p.scores[3].value
+          );
+        }
+        cells.forEach((c, i) => {
+          const td = document.createElement("td");
+          td.style.padding = "6px";
+          td.style.color = "rgba(255,255,255,.75)";
+          td.textContent = c;
+          tr.appendChild(td);
+        });
+        const vd = document.createElement("td");
+        vd.style.padding = "6px";
+        vd.style.fontFamily = "-apple-system, 'PingFang SC', sans-serif";
+        const verdict = r.config
+          ? sybilVerdict(r.config)
+          : { text: t("sybilQueryFailed"), color: "#888" };
+        vd.style.color = verdict.color;
+        vd.textContent = verdict.text;
+        tr.appendChild(vd);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      box.appendChild(table);
     }
 
     async function runSybil() {
@@ -3442,13 +3827,14 @@
       const box = document.getElementById("sybilResults");
       if (!addrs.length) {
         box.innerHTML =
-          '<div style="color:rgba(255,255,255,.4);font-size:11px;">请输入至少一个有效地址</div>';
+          '<div style="color:rgba(255,255,255,.4);font-size:11px;">' +
+          t("sybilNoAddr") + '</div>';
         return;
       }
 
       box.innerHTML =
-        '<div style="color:rgba(255,255,255,.4);font-size:11px;">筛查中（' +
-        addrs.length + ' 个地址，实时链上数据）…</div>';
+        '<div style="color:rgba(255,255,255,.4);font-size:11px;">' +
+        t("sybilScanning") + addrs.length + t("sybilScanningSuffix") + '</div>';
 
       const rows = [];
       const queue = [...addrs];
@@ -3468,7 +3854,7 @@
             rows.push({ addr, config, profile, verdict: sybilVerdict(config) });
           } catch {
             rows.push({ addr, config: null, profile: null,
-              verdict: { text: "查询失败", color: "#888" } });
+              verdict: { text: t("sybilQueryFailed"), color: "#888" } });
           }
         }
       };
@@ -3476,50 +3862,8 @@
       rows.sort((a, b) => (b.config?.energy || 0) - (a.config?.energy || 0));
       app.sybilRows = rows;
 
-      // 渲染结果表
-      box.textContent = "";
-      const table = document.createElement("table");
-      table.style.cssText =
-        "width:100%;border-collapse:collapse;font-size:10px;font-family:monospace;";
-      const thead = document.createElement("thead");
-      thead.innerHTML =
-        '<tr style="color:rgba(255,255,255,.35);text-align:left;">' +
-        "<th style=\"padding:6px;\">ADDRESS</th>" +
-        "<th>原型</th><th>阶段</th><th>能量</th><th>财富</th><th>足迹</th><th>活力</th><th>判定</th></tr>";
-      table.appendChild(thead);
-      const tbody = document.createElement("tbody");
-      rows.forEach((r) => {
-        const tr = document.createElement("tr");
-        tr.style.borderTop = "1px solid rgba(255,255,255,.06)";
-        const cells = [r.addr.slice(0, 6) + "…" + r.addr.slice(-4)];
-        if (!r.config) {
-          cells.push("-", "-", "-", "-", "-", "-");
-        } else {
-          const p = r.profile;
-          cells.push(
-            p.role.replace(/ .*$/, ""),
-            r.config.stageName,
-            Math.round(r.config.energy).toLocaleString(),
-            p.scores[0].value, p.scores[1].value, p.scores[3].value
-          );
-        }
-        cells.forEach((c, i) => {
-          const td = document.createElement("td");
-          td.style.padding = "6px";
-          td.style.color = "rgba(255,255,255,.75)";
-          td.textContent = c;
-          tr.appendChild(td);
-        });
-        const vd = document.createElement("td");
-        vd.style.padding = "6px";
-        vd.style.color = r.verdict.color;
-        vd.style.fontFamily = "-apple-system, 'PingFang SC', sans-serif";
-        vd.textContent = r.verdict.text;
-        tr.appendChild(vd);
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-      box.appendChild(table);
+      // 渲染结果表（renderSybilTable 同时供语言切换重绘）
+      renderSybilTable();
       document.getElementById("sybilCsv").style.display = "inline-block";
     }
 
@@ -3528,8 +3872,8 @@
       if (!rows.length) return;
       const head = "address,archetype,stage,energy,wealth,footprint,vitality,verdict";
       const lines = rows.map((r) => {
-        if (!r.config) return [r.addr, "查询失败", "-", "-", "-", "-", "-", "查询失败"].join(",");
-        const p = r.profile;
+        if (!r.config) return [r.addr, t("sybilQueryFailed"), "-", "-", "-", "-", "-", t("sybilQueryFailed")].join(",");
+        const p = generateWalletProfile(r.config);
         return [
           r.addr,
           '"' + p.role.replace(/"/g, "") + '"',
@@ -3545,7 +3889,7 @@
       a.href = URL.createObjectURL(blob);
       a.download = "chainlife-sybil-check.csv";
       a.click();
-      showToast("CSV 已导出（" + rows.length + " 个地址）");
+      showToast(t("csvExported") + rows.length + t("csvExportedSuffix"));
     }
 
     function showError(error) {
@@ -3557,18 +3901,17 @@
         <div class="error-box">
           <div class="error-title">INITIALIZATION FAILED</div>
           <div>
-            页面初始化失败。通常是 CDN 无法访问、浏览器 WebGL 被禁用，
-            或者直接打开本地文件导致模块加载受限。
+            ${t("errorDesc")}
           </div>
           <br>
           <div>${String(error.message || error)}</div>
           <br>
           <div>
-            请使用本地服务器打开，例如：
+            ${t("errorHint")}
             <br>
             python3 -m http.server 8080
             <br>
-            然后访问 http://localhost:8080
+            ${LANG === "zh" ? "然后访问 http://localhost:8080" : "then visit http://localhost:8080"}
           </div>
         </div>
       `;
@@ -3742,96 +4085,124 @@
       const bal = config.balanceEth;
       const isContract = !!config.isContract;
       const holdings = (config.assets || []).length;
+      // 双语取词：zh 中文 / en English
+      const B = (zh, en) => (LANG === "en" ? en : zh);
 
       let role, icon, age, accent;
       const tags = [];
 
       if (config.satoshi) {
-        role = "创世者 The Genesis";
+        role = B("创世者", "The Genesis");
         icon = "⦿";
         accent = "#ffb347";
-        age = "创世 · 2009";
-        tags.push("链外传说", "一切的开端");
+        age = B("创世 · 2009", "Genesis · 2009");
+        tags.push(B("链外传说", "Legend from another chain"),
+                  B("一切的开端", "Where it all began"));
       } else if (config.zeroAddress) {
-        role = "万物坟墓 The Void";
+        role = B("万物坟墓", "The Void");
         icon = "🕳️";
         accent = "#8b6bff";
-        age = "虚无";
-        tags.push("零地址", "焚烧归集");
+        age = B("虚无", "The Void");
+        tags.push(B("零地址", "Zero address"),
+                  B("焚烧归集", "Burn collection"));
       } else if (isContract) {
         if (bal >= 1000) {
-          role = "机构金库 Institutional Vault";
-          icon = "🏦"; accent = "#ff5c5c"; age = "巨量储备";
-          tags.push("机构级储备", "资金中枢");
+          role = B("机构金库", "Institutional Vault");
+          icon = "🏦"; accent = "#ff5c5c";
+          age = B("巨量储备", "Massive reserves");
+          tags.push(B("机构级储备", "Institutional reserve"),
+                    B("资金中枢", "Capital hub"));
         } else if (bal >= 10) {
-          role = "协议中枢 Protocol Nexus";
-          icon = "⚙️"; accent = "#5ce1e6"; age = "协议骨干";
-          tags.push("协议核心", "生态枢纽");
+          role = B("协议中枢", "Protocol Nexus");
+          icon = "⚙️"; accent = "#5ce1e6";
+          age = B("协议骨干", "Protocol backbone");
+          tags.push(B("协议核心", "Protocol core"),
+                    B("生态枢纽", "Ecosystem nexus"));
         } else if (bal > 0) {
-          role = "活跃合约 Active Contract";
-          icon = "🔩"; accent = "#7ddb8c"; age = "运行中";
-          tags.push("链上合约", "持续运转");
+          role = B("活跃合约", "Active Contract");
+          icon = "🔩"; accent = "#7ddb8c";
+          age = B("运行中", "Running");
+          tags.push(B("链上合约", "On-chain contract"),
+                    B("持续运转", "Always on"));
         } else {
-          role = "冷合约 Cold Contract";
-          icon = "🧊"; accent = "#8ea2b8"; age = "沉寂";
-          tags.push("无余额", "待唤醒");
+          role = B("冷合约", "Cold Contract");
+          icon = "🧊"; accent = "#8ea2b8";
+          age = B("沉寂", "Silent");
+          tags.push(B("无余额", "No balance"),
+                    B("待唤醒", "Awaiting awakening"));
         }
       } else {
         if (e >= 8000) {
-          role = "远古存在 Ancient";
-          icon = "🐉"; accent = "#ff4dd8"; age = "远古";
-          tags.push("见证历史", "OG级地址");
+          role = B("远古存在", "Ancient");
+          icon = "🐉"; accent = "#ff4dd8";
+          age = B("远古", "Ancient");
+          tags.push(B("见证历史", "Witness of history"),
+                    B("OG级地址", "OG address"));
         } else if (e >= 2000) {
-          role = "巨鲸 Whale";
-          icon = "🐋"; accent = "#ff8c42"; age = "巅峰期";
-          tags.push("海量交易", "链上影响力");
+          role = B("巨鲸", "Whale");
+          icon = "🐋"; accent = "#ff8c42";
+          age = B("巅峰期", "Peak");
+          tags.push(B("海量交易", "Massive volume"),
+                    B("链上影响力", "On-chain influence"));
         } else if (e >= 500) {
-          role = "深度玩家 Power User";
-          icon = "🎮"; accent = "#ffd166"; age = "成熟期";
-          tags.push("频繁交互", "多协议活跃");
+          role = B("深度玩家", "Power User");
+          icon = "🎮"; accent = "#ffd166";
+          age = B("成熟期", "Mature");
+          tags.push(B("频繁交互", "Frequent interactions"),
+                    B("多协议活跃", "Multi-protocol active"));
         } else if (e >= 150) {
-          role = "活跃用户 Active";
-          icon = "⚡"; accent = "#7ddb8c"; age = "成长期";
-          tags.push("定期交易", "DeFi 常客");
+          role = B("活跃用户", "Active");
+          icon = "⚡"; accent = "#7ddb8c";
+          age = B("成长期", "Growing");
+          tags.push(B("定期交易", "Regular trading"),
+                    B("DeFi 常客", "DeFi regular"));
         } else if (e >= 50) {
-          role = "探索者 Explorer";
-          icon = "🧭"; accent = "#5bc0eb"; age = "初入链";
-          tags.push("偶尔交互", "谨慎试探");
+          role = B("探索者", "Explorer");
+          icon = "🧭"; accent = "#5bc0eb";
+          age = B("初入链", "New to the chain");
+          tags.push(B("偶尔交互", "Occasional interactions"),
+                    B("谨慎试探", "Cautious explorer"));
         } else if (e >= 10) {
-          role = "初学者 Beginner";
-          icon = "🌱"; accent = "#9be8ff"; age = "萌芽期";
-          tags.push("刚刚起步", "链上学习");
+          role = B("初学者", "Beginner");
+          icon = "🌱"; accent = "#9be8ff";
+          age = B("萌芽期", "Sprouting");
+          tags.push(B("刚刚起步", "Just starting"),
+                    B("链上学习", "Learning on-chain"));
         } else if (bal > 0) {
-          role = "潜眠者 Dormant";
-          icon = "🌙"; accent = "#c9b8ff"; age = "沉睡期";
-          tags.push("持有资产", "静待觉醒");
+          role = B("潜眠者", "Dormant");
+          icon = "🌙"; accent = "#c9b8ff";
+          age = B("沉睡期", "Dormant");
+          tags.push(B("持有资产", "Holding assets"),
+                    B("静待觉醒", "Waiting to awaken"));
         } else {
-          role = "空白之卵 Empty Egg";
-          icon = "🥚"; accent = "#c9d6e5"; age = "待孵化";
-          tags.push("全新地址", "尚无足迹");
+          role = B("空白之卵", "Empty Egg");
+          icon = "🥚"; accent = "#c9d6e5";
+          age = B("待孵化", "Unhatched");
+          tags.push(B("全新地址", "Brand new"),
+                    B("尚无足迹", "No footprint yet"));
         }
 
         // ── 组合标签池：活跃 × 财富 × 持仓 × 阶段 交叉特征 ──
         const b = bal === null ? 0 : bal;
-        if (tx >= 100 && b < 0.5) tags.push("空投猎人");
-        if (tx < 20 && b >= 10) tags.push("囤币大户 HODLer");
-        if (tx >= 1000 && b >= 100) tags.push("鲸群核心");
-        if (b >= 1 && tx >= 20 && tx < 100) tags.push("财富积累中");
-        if (tx >= 5000) tags.push("链上老兵");
-        if (tx >= 200 && tx < 1000) tags.push("高频交易者");
-        if (b >= 100) tags.push("百枚ETH俱乐部");
-        if (b >= 1000) tags.push("千枚ETH传说");
-        if (b >= 0.1 && b < 1) tags.push("小额活跃");
-        if (holdings >= 3) tags.push("多元持仓");
-        if (holdings >= 6) tags.push("资产收藏家");
-        if (holdings >= 1 && holdings <= 2) tags.push("聚焦持仓");
-        if (tx >= 10 && tx < 50 && b > 0) tags.push("稳健漫步者");
-        if (tx === 0 && b > 0) tags.push("只进不出");
-        if (tx <= 3 && b === 0) tags.push("出生即沉默");
-        if (config.targetStage >= 7) tags.push("进化顶端");
-        if (config.targetStage <= 1) tags.push("原始生命");
-        if (config.vitality >= 80) tags.push("生命力旺盛");
-        if (config.vitality < 30) tags.push("气息微弱");
+        if (tx >= 100 && b < 0.5) tags.push(B("空投猎人", "Airdrop hunter"));
+        if (tx < 20 && b >= 10) tags.push(B("囤币大户", "HODLer"));
+        if (tx >= 1000 && b >= 100) tags.push(B("鲸群核心", "Whale core"));
+        if (b >= 1 && tx >= 20 && tx < 100) tags.push(B("财富积累中", "Accumulating"));
+        if (tx >= 5000) tags.push(B("链上老兵", "On-chain veteran"));
+        if (tx >= 200 && tx < 1000) tags.push(B("高频交易者", "High-frequency trader"));
+        if (b >= 100) tags.push(B("百枚ETH俱乐部", "100-ETH club"));
+        if (b >= 1000) tags.push(B("千枚ETH传说", "1000-ETH legend"));
+        if (b >= 0.1 && b < 1) tags.push(B("小额活跃", "Small but active"));
+        if (holdings >= 3) tags.push(B("多元持仓", "Diversified holdings"));
+        if (holdings >= 6) tags.push(B("资产收藏家", "Asset collector"));
+        if (holdings >= 1 && holdings <= 2) tags.push(B("聚焦持仓", "Focused holdings"));
+        if (tx >= 10 && tx < 50 && b > 0) tags.push(B("稳健漫步者", "Steady walker"));
+        if (tx === 0 && b > 0) tags.push(B("只进不出", "One-way valve"));
+        if (tx <= 3 && b === 0) tags.push(B("出生即沉默", "Born silent"));
+        if (config.targetStage >= 7) tags.push(B("进化顶端", "Apex evolution"));
+        if (config.targetStage <= 1) tags.push(B("原始生命", "Primitive life"));
+        if (config.vitality >= 80) tags.push(B("生命力旺盛", "Full of vitality"));
+        if (config.vitality < 30) tags.push(B("气息微弱", "Faint pulse"));
       }
 
       // ── 四维评分（0-99）──
@@ -3842,14 +4213,14 @@
       ));
       const vitality = config.vitality || 50;
       const scores = [
-        { key: "wealth", label: "财富", value: wealth },
-        { key: "footprint", label: "足迹", value: footprint },
-        { key: "wisdom", label: "智慧", value: wisdom },
-        { key: "vitality", label: "活力", value: vitality }
+        { key: "wealth", label: B("财富", "Wealth"), value: wealth },
+        { key: "footprint", label: B("足迹", "Footprint"), value: footprint },
+        { key: "wisdom", label: B("智慧", "Wisdom"), value: wisdom },
+        { key: "vitality", label: B("活力", "Vitality"), value: vitality }
       ];
 
       // ── 一句话评价（按原型 + 特征从模板池挑选）──
-      const EVALS = [
+      const EVALS_ZH = [
         "链上岁月写成的地址，每一笔交易都是它的呼吸。",
         "低调的持有者，时间会证明它的耐心。",
         "它见过牛熊，也见过离别，如今依旧在链上。",
@@ -3863,6 +4234,21 @@
         "每一次交互都在积累，每一次积累都是成长。",
         "链上世界里的常客，从不缺席重要时刻。"
       ];
+      const EVALS_EN = [
+        "An address written by on-chain years — every transaction is its breath.",
+        "A quiet holder whose patience will be proven by time.",
+        "It has seen bulls and bears, arrivals and departures — and still lives on-chain.",
+        "Between rapid entries and exits lies the sharpest sense of the market.",
+        "Assets in its hands move like a carefully choreographed dance.",
+        "Silence is not departure — it is waiting for the next opportunity.",
+        "Every step on-chain is a footnote to its character.",
+        "A zero-to-one address, writing its own legend.",
+        "Its wallet holds more than assets — it holds stories.",
+        "A quiet whale, swimming through the deep sea of data.",
+        "Every interaction accumulates; every accumulation is growth.",
+        "A regular of the on-chain world that never misses a defining moment."
+      ];
+      const EVALS = LANG === "en" ? EVALS_EN : EVALS_ZH;
       const seed = config.seed || 0;
       const evalIdx = (seed >>> 0) % EVALS.length;
       const evaluation = EVALS[evalIdx];
@@ -3880,10 +4266,10 @@
       if (!track) return;
 
       if (!track.children.length) {
-        STAGE_NAMES.forEach((name) => {
+        STAGE_NAMES.forEach((name, i) => {
           const dot = document.createElement("div");
           dot.className = "stage-dot";
-          dot.title = name;
+          dot.title = stageName9(i);
           track.appendChild(dot);
         });
       }
@@ -3898,6 +4284,7 @@
     async function main() {
       try {
         initThree();
+        applyLang();
 
         const input =
           document.getElementById("addressInput");
