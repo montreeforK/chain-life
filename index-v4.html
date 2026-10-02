@@ -604,7 +604,7 @@
 
           <div class="address-preview">
             <div class="address-label" id="addressLabel">ADDRESS SIGNATURE</div>
-            <span id="addressPreview">0x742d...8f44e</span>
+            <span id="addressPreview">1A1zP1...Na</span>
           </div>
         </div>
 
@@ -613,7 +613,7 @@
             id="addressInput"
             autocomplete="off"
             spellcheck="false"
-            value="0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+            value="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
             placeholder="输入任意 EVM 地址"
           />
 
@@ -787,7 +787,7 @@
       "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js";
 
     const DEFAULT_ADDRESS =
-      "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+      "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"; // 创世者：从一切的开端入场
 
     const app = {
       scene: null,
@@ -878,6 +878,7 @@
         bioNoHistory: "该钱包没有可读的转账与交易记录，故事留白。",
         bioComingSoon: "AI 传记服务即将上线（本地开发已可用）",
         bioFromChain: "由链上事实生成 · AI",
+        bioLocal: "由链上事实生成 · 本地引擎",
         bioFailed: "传记生成失败，稍后重试",
         nameless: "无名者",
         huntsTitle: "GMX HUNTS · 捕猎记录",
@@ -972,6 +973,7 @@
         bioNoHistory: "This wallet has no readable transfer history — its story is left blank.",
         bioComingSoon: "AI biography service coming soon (available locally)",
         bioFromChain: "Generated from on-chain facts · AI",
+        bioLocal: "Built from on-chain facts · local engine",
         bioFailed: "Biography generation failed, retry later",
         nameless: "The Nameless One",
         huntsTitle: "GMX HUNTS · Live Trades",
@@ -1174,8 +1176,19 @@
     const ALCHEMY_KEY = "alch_9iKrEXhhAmZ97F0hKHH9G";
     const ALCHEMY_URL = "https://arb-mainnet.g.alchemy.com/v2/" + ALCHEMY_KEY;
 
+    // 带超时的 fetch：外部服务（Worker/RPC/squid）不可达时绝不让面板卡死
+    async function fetchWithTimeout(url, options, ms = 10000) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), ms);
+      try {
+        return await fetch(url, { ...options, signal: ctrl.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     async function rpcRequest(url, method, params) {
-      const res = await fetch(url, {
+      const res = await fetchWithTimeout(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
@@ -1236,11 +1249,11 @@
         query: `{ tradeActions(limit: 20, where: { account_eq: "${checksummed}" }, orderBy: timestamp_DESC) { id timestamp eventName sizeDeltaUsd isLong executionPrice transactionHash } }`
       });
       const tryUrl = async (url) => {
-        const r = await fetch(url, {
+        const r = await fetchWithTimeout(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: q
-        });
+        }, 12000);
         if (!r.ok) throw new Error("gmx http " + r.status);
         const d = await r.json();
         return d.data?.tradeActions || [];
@@ -1835,13 +1848,18 @@
             float edge = pow(1.0 - abs(vNormalWorld.z), 1.5);
             float energy = .55 + vNoise * .35 + edge * .6;
 
-            // 油彩虹彩：噪声驱动色相在主题首尾色间扫过，每个壳面
-            // 呈现流动的多彩光谱；边缘菲涅尔镀膜混辅色与第三色
+            // 油彩虹彩：噪声驱动色相经分隔补色中站扫过首尾色，
+            // 每块壳面呈现更宽的多彩光谱；边缘补色镀膜 + 第三色高光
             float sweep = fract(vNoise * 0.9 + edge * 0.25);
-            float hue = mix(uHue0, uHue2, sweep);
-            vec3 irid = hsl2rgb(hue, 0.82, 0.60);
-            irid = mix(irid, uColor2, edge * 0.35);
-            irid = mix(irid, uColor3, edge * edge * 0.25);
+            float hMid = fract(uHue0 + 0.38);
+            float hue = sweep < 0.5
+              ? mix(uHue0, hMid, sweep * 2.0)
+              : mix(hMid, uHue2, (sweep - 0.5) * 2.0);
+            vec3 irid = hsl2rgb(hue, 0.90, 0.60);
+            vec3 rim = hsl2rgb(fract(hue + 0.5), 0.88, 0.55);
+            irid = mix(irid, rim, edge * 0.30);
+            irid = mix(irid, uColor2, edge * 0.22);
+            irid = mix(irid, uColor3, edge * edge * 0.22);
             vec3 hdrColor = mix(uColor * 1.6, irid, uReveal) * energy * 1.25;
 
             gl_FragColor = vec4(hdrColor, .22);
@@ -1941,9 +1959,9 @@
         sizes[i] = .2 + Math.pow(rng(), 2.4) * 1.8;
         lives[i] = rng();
         phases[i] = rng();
-        // 三族粒子：45% 主色 / 35% 辅色 / 20% 第三色
+        // 三族粒子：40% 主色 / 35% 辅色 / 25% 第三色（彩度更均衡）
         const mr = rng();
-        mixes[i] = mr < 0.45 ? 0.0 : (mr < 0.8 ? 1.0 : 2.0);
+        mixes[i] = mr < 0.40 ? 0.0 : (mr < 0.75 ? 1.0 : 2.0);
       }
 
       const geometry = new THREE.BufferGeometry();
@@ -2221,6 +2239,7 @@
           uTime: { value: 0 },
           uColor: { value: config.color },
           uColor2: { value: config.color2 },
+          uColor3: { value: config.color3 },
           uColorHot: { value: config.colorHot },
           uInner: { value: config.disk.inner },
           uOuter: { value: config.disk.outer },
@@ -2245,6 +2264,7 @@
           uniform float uTime;
           uniform vec3 uColor;
           uniform vec3 uColor2;
+          uniform vec3 uColor3;
           uniform vec3 uColorHot;
           uniform float uInner;
           uniform float uOuter;
@@ -2364,6 +2384,9 @@
 
             vec3 base = heat(temp * (0.55 + 0.45 * D));
             base = mix(base, uColor2, clamp(1.0 - D, 0.0, 1.0) * 0.45);
+            // 外缘第三色晕带：盘面色彩更丰富，不只有主辅两色
+            float outerBand = smoothstep(Rout * 0.55, Rout, R);
+            base = mix(base, uColor3 * 1.15, outerBand * 0.30);
             vec3 col = base * I * (0.65 + 0.35 * D * D);
 
             float a = clamp(I * 0.55, 0.0, 1.0) * uOpacity;
@@ -2577,6 +2600,7 @@
         app.disk.material.uniforms.uOpacity.value = 0;
         app.disk.material.uniforms.uColor.value.copy(app.birthColor);
         app.disk.material.uniforms.uColor2.value.copy(app.birthColor);
+        app.disk.material.uniforms.uColor3.value.copy(app.birthColor);
         app.disk.material.uniforms.uColorHot.value.copy(app.birthColor);
       }
       app.einsteinRings?.forEach((r) => {
@@ -2585,6 +2609,32 @@
         r.material.uniforms.uColor2.value.copy(app.birthColor);
         r.material.uniforms.uColorHot.value.copy(app.birthColor);
       });
+
+      // ── 创世者入场：三层金色冲击环 + 诞生期 bloom 强化 ──
+      if (app.genesisShocks) {
+        app.genesisShocks.forEach((r) => {
+          app.scene.remove(r); r.geometry.dispose(); r.material.dispose();
+        });
+      }
+      app.genesisShocks = [];
+      app.genesisBirth = !!config.satoshi;
+      if (config.satoshi) {
+        app.genesisStart = performance.now() / 1000;
+        for (let i = 0; i < 3; i++) {
+          const ringGeo = new THREE.RingGeometry(0.94, 0.99, 96);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: 0xffb347, side: THREE.DoubleSide,
+            transparent: true, opacity: 0.85,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          });
+          const ring = new THREE.Mesh(ringGeo, ringMat);
+          ring.rotation.x = -Math.PI / 2;
+          ring.position.copy(app.organism.position);
+          ring.userData = { delay: i * 0.5 };
+          app.scene.add(ring);
+          app.genesisShocks.push(ring);
+        }
+      }
       app.evolutionStart = performance.now() / 1000;
 
       updateStats(address, config, onchain);
@@ -3158,6 +3208,7 @@
           du.uOpacity.value = eased * app.config.disk.opacity;
           du.uColor.value.copy(app.birthColor).lerp(app.targetColor, eased);
           du.uColor2.value.copy(app.birthColor).lerp(app.config.color2, eased);
+          du.uColor3.value.copy(app.birthColor).lerp(app.config.color3, eased);
           du.uColorHot.value.copy(app.birthColor).lerp(app.config.colorHot, eased);
           app.einsteinRings?.forEach((r) => {
             const ru = r.material.uniforms;
@@ -3178,11 +3229,36 @@
         }
         if (done && app.evolutionStart) {
           app.evolutionStart = 0;
+          app.genesisBirth = false;
+        }
+
+        // ── 创世者冲击环：金色涟漪逐波扩散（延迟 3 波）──
+        if (app.genesisShocks && app.genesisShocks.length) {
+          const ge = (performance.now() / 1000) - app.genesisStart;
+          for (const ring of app.genesisShocks) {
+            const tt = ge - ring.userData.delay;
+            if (tt >= 0) {
+              const p = Math.min(1, tt / 2.4);
+              const easeOut = 1 - p * p;
+              ring.scale.setScalar(1 + p * 16);
+              ring.material.opacity = 0.85 * easeOut * easeOut;
+              ring.rotation.z += 0.005;
+            }
+          }
+          if (ge > 2.4 + 2 * 0.5 + 1.2) {
+            app.genesisShocks.forEach((r) => {
+              app.scene.remove(r); r.geometry.dispose(); r.material.dispose();
+            });
+            app.genesisShocks = [];
+            app.genesisStart = 0;
+          }
         }
       }
 
             // Smooth bloom fade-in during evolution
       let bloomTarget = 0.8 + (app.pulseBoost || 0) * 0.8;
+      // 创世者诞生期：bloom 强化为金色爆发
+      if (app.genesisBirth && app.evolutionStart) bloomTarget = 1.6;
       if (app.evolutionStart && app.evolutionStart > 0) {
         const elapsed = (performance.now() / 1000) - app.evolutionStart;
         const raw = Math.min(1, elapsed / 5.0);
@@ -3456,6 +3532,103 @@
     const STAGES9 = ["Primordial","Emerged","Awakening","Growing","Thriving","Mature","Intense","Radiant","Ancient"];
     const CHAINLIFE_WORKER_URL = "https://chain-life.chainlife.workers.dev";
 
+    // ── 前端模板生平：不依赖后端 LLM，Worker 不可达时兜底（纯链上事实拼装）──
+    function buildLocalStory(config, profile, facts) {
+      const en = LANG === "en";
+      const seed = config.seed || 0;
+      const pick = (arr) => arr[seed % arr.length];
+      const born = facts.born && facts.born !== "unknown" ? facts.born : null;
+      const first = facts.firstTx || null;
+      const biggest = facts.biggestTx || null;
+      const bal = (facts.balanceEth ?? 0);
+      const tx = facts.txCount ?? 0;
+      const holdings = (facts.holdings || []).length;
+
+      if (config.satoshi) {
+        return {
+          name: en ? "Satoshi" : "中本聪",
+          traits: profile.tags.slice(0, 3),
+          epitaph: profile.evaluation,
+          story: en
+            ? `Born on ${facts.born}. Its first breath was ${facts.firstTx} — the very beginning of a world it never left. It arrived on this chain as an echo: ${facts.biggestTx}. Here it burns at full energy — a legend from another chain, visiting ours.`
+            : `诞生于 ${facts.born}。它的第一次呼吸是 ${facts.firstTx}——一个世界的创世之始，而它从未离开。它以此链为回声降临：${facts.biggestTx}。在这里，它以满能量燃烧——一个来自另一条链的传说，途经我们的世界。`
+        };
+      }
+
+      const parts = [];
+      if (born && first) {
+        parts.push(en
+          ? `Its first on-chain memory dates back to ${born}: ${first}.`
+          : `它在链上的第一段记忆始于 ${born}：${first}。`);
+      } else if (first) {
+        parts.push(en
+          ? `Its first recorded move: ${first}.`
+          : `它被记录的第一步：${first}。`);
+      } else {
+        parts.push(en
+          ? "It left no readable transfer trail — a quiet existence, measured only by what it holds."
+          : "它没有留下可读的转账轨迹——以静默的方式存在，只能由它的持有来度量。");
+      }
+      if (biggest) {
+        parts.push(en
+          ? `The largest movement ever recorded through it: ${biggest}.`
+          : `流经它的最大一笔记录：${biggest}。`);
+      }
+      if (tx > 0) {
+        parts.push(en
+          ? `In total, ${tx.toLocaleString()} on-chain actions have shaped it.`
+          : `累计 ${tx.toLocaleString()} 次链上行动塑造了它。`);
+      }
+      if (holdings > 0) {
+        parts.push(en
+          ? `Its orbit holds ${holdings} kinds of tokens.`
+          : `它的轨道上环绕着 ${holdings} 种代币。`);
+      }
+      if (facts.gmxHunts) {
+        parts.push(en
+          ? `It hunts on GMX: ${facts.gmxHunts} trades, ~$${Math.round(facts.gmxVolumeUsd || 0).toLocaleString()} in volume.`
+          : `它在 GMX 上捕猎：${facts.gmxHunts} 笔交易，约 $${Math.round(facts.gmxVolumeUsd || 0).toLocaleString()} 成交量。`);
+      }
+      parts.push(profile.evaluation);
+
+      return {
+        name: stageName9(config.targetStage) + " " + t("lifeform") + " · " + (facts.address || ""),
+        traits: profile.tags.slice(0, 3),
+        epitaph: profile.evaluation,
+        story: parts.join(en ? " " : "")
+      };
+    }
+
+    // 逐字输出生平（类型机）
+    async function typewriteBio(storyEl, story, token) {
+      storyEl.textContent = "";
+      for (const ch of story.replace(/\n+/g, "\n")) {
+        if (token !== app.bioToken) return;
+        storyEl.textContent += ch;
+        await new Promise((r) => setTimeout(r, ch === "\n" ? 60 : 9));
+      }
+    }
+
+    function renderBioPanel(bio, token) {
+      if (!bio || token !== app.bioToken) return;
+      document.getElementById("bioName").textContent =
+        bio.name || t("nameless");
+      const traitsEl = document.getElementById("bioTraits");
+      traitsEl.textContent = "";
+      (bio.traits || []).forEach((t) => {
+        const pill = document.createElement("span");
+        pill.className = "tag-pill";
+        pill.textContent = t;
+        pill.style.borderColor = "rgba(255,255,255,.18)";
+        pill.style.color = "rgba(255,255,255,.65)";
+        pill.style.background = "rgba(255,255,255,.06)";
+        pill.style.marginRight = "4px";
+        traitsEl.appendChild(pill);
+      });
+      document.getElementById("bioEpitaph").textContent =
+        bio.epitaph ? "「" + bio.epitaph + "」" : "";
+    }
+
     async function loadBioStory(address, config, onchain, assets) {
       const panel = document.getElementById("bioPanel");
       const token = (app.bioToken = (app.bioToken || 0) + 1);
@@ -3477,7 +3650,7 @@
       const facts = buildBioFacts(address, config, onchain, assets, transfers, gmxTrades, profile.role);
 
       renderHuntFeed();
-      // 创世者例外：它的历史在另一条链上，由彩蛋事实讲述
+      // 零足迹钱包：故事留白
       if (!gmxTrades.length && !transfers.length && !config.satoshi) {
         document.getElementById("bioStatus").textContent =
           t("bioNoHistory");
@@ -3485,15 +3658,18 @@
       }
 
       const isLocal = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+      const endpoint = isLocal ? "/bio" : CHAINLIFE_WORKER_URL + "/bio";
       if (!isLocal && !CHAINLIFE_WORKER_URL) {
-        document.getElementById("bioStatus").textContent =
-          t("bioComingSoon");
+        // 无后端：直接本地模板
+        renderBioPanel(buildLocalStory(config, profile, facts), token);
+        document.getElementById("bioStatus").textContent = t("bioLocal");
+        await typewriteBio(document.getElementById("bioStory"),
+          buildLocalStory(config, profile, facts).story, token);
         return;
       }
 
-      const endpoint = isLocal ? "/bio" : CHAINLIFE_WORKER_URL + "/bio";
       try {
-        const res = await fetch(endpoint, {
+        const res = await fetchWithTimeout(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -3501,45 +3677,21 @@
             facts,
             lang: document.documentElement.lang === "zh-CN" ? "zh" : "en"
           })
-        });
+        }, 6000);
         if (!res.ok) throw new Error("bio http " + res.status);
         const bio = (await res.json()).bio;
         if (!bio || token !== app.bioToken) return;
-
-        document.getElementById("bioName").textContent =
-          bio.name || t("nameless");
-        // traits 用胶囊标签渲染，避免长文本挤压折叠
-        const traitsEl = document.getElementById("bioTraits");
-        traitsEl.textContent = "";
-        (bio.traits || []).forEach((t) => {
-          const pill = document.createElement("span");
-          pill.className = "tag-pill";
-          pill.textContent = t;
-          pill.style.borderColor = "rgba(255,255,255,.18)";
-          pill.style.color = "rgba(255,255,255,.65)";
-          pill.style.background = "rgba(255,255,255,.06)";
-          pill.style.marginRight = "4px";
-          traitsEl.appendChild(pill);
-        });
-        document.getElementById("bioEpitaph").textContent =
-          bio.epitaph ? "「" + bio.epitaph + "」" : "";
+        renderBioPanel(bio, token);
         document.getElementById("bioStatus").textContent =
           t("bioFromChain");
-
-        // 类型机逐字输出生平
-        const storyEl = document.getElementById("bioStory");
-        storyEl.textContent = "";
-        const story = (bio.story || "").replace(/\n+/g, "\n");
-        for (const ch of story) {
-          if (token !== app.bioToken) return;
-          storyEl.textContent += ch;
-          await new Promise((r) => setTimeout(r, ch === "\n" ? 60 : 9));
-        }
+        await typewriteBio(document.getElementById("bioStory"), bio.story || "", token);
       } catch (e) {
-        if (token === app.bioToken) {
-          document.getElementById("bioStatus").textContent =
-            t("bioFailed");
-        }
+        // Worker 不可达/失败 → 本地模板兜底，绝不卡在“阅读中”
+        if (token !== app.bioToken) return;
+        const local = buildLocalStory(config, profile, facts);
+        renderBioPanel(local, token);
+        document.getElementById("bioStatus").textContent = t("bioLocal");
+        await typewriteBio(document.getElementById("bioStory"), local.story, token);
       }
     }
 
@@ -4014,6 +4166,18 @@
             return col * inten;
           }
 
+          // 彩色星云：青/品红/琥珀三片暗晕，让深空不再单色
+          vec3 nebula(vec3 dir) {
+            vec3 d = normalize(dir);
+            float n1 = fbm(vec3(d * 2.2 + vec3(0.0, 0.0, 3.0)));
+            float n2 = fbm(vec3(d * 2.7 + vec3(7.0, 0.0, 0.0)));
+            float n3 = fbm(vec3(d * 2.0 + vec3(0.0, 9.0, 0.0)));
+            vec3 c1 = vec3(0.20, 0.55, 0.78) * smoothstep(0.48, 0.88, n1) * 0.11;
+            vec3 c2 = vec3(0.66, 0.30, 0.85) * smoothstep(0.48, 0.88, n2) * 0.085;
+            vec3 c3 = vec3(0.85, 0.46, 0.18) * smoothstep(0.55, 0.92, n3) * 0.06;
+            return (c1 + c2 + c3) * 2.4;
+          }
+
           vec3 starLayer(
             vec3 dir, mat3 rot, float scale, float thresh, float soft
           ) {
@@ -4027,9 +4191,11 @@
             float core = exp(-d2 * soft);
             float halo = exp(-d2 * soft * 0.10) * 0.22;
             float bright = 0.30 + 1.6 * pow(hash13(id + 9.3), 6.0);
-            vec3 tint = mix(
-              vec3(0.72, 0.84, 1.25), vec3(1.20, 0.95, 0.72),
-              hash13(id + 5.5));
+            // 星色三段：冷蓝白 → 暖白 → 青金，深空星野更斑斓
+            float starMix = hash13(id + 5.5);
+            vec3 tint = starMix < 0.5
+              ? mix(vec3(0.72, 0.84, 1.25), vec3(1.20, 0.95, 0.72), starMix * 2.0)
+              : mix(vec3(1.20, 0.95, 0.72), vec3(0.78, 1.05, 0.92), (starMix - 0.5) * 2.0);
             return tint * (core + halo) * bright *
               smoothstep(thresh, thresh + 0.015, h);
           }
@@ -4063,6 +4229,7 @@
             dir = rotAxis(vec3(0.0, 1.0, 0.0), t) * dir;
             vec3 col = vec3(0.010, 0.013, 0.028); // 天空底色
             col += galaxy(dir);
+            col += nebula(dir);
             col += starField(dir) * 0.85;
             gl_FragColor = vec4(col, 1.0);
           }
